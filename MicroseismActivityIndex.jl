@@ -42,7 +42,7 @@ using FindPeaks1D
 
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
-cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE"
+cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE_noWindSum"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
@@ -65,7 +65,7 @@ cInput_GEBCO = string(user_str,"Research/GEBCO_Bathymetry/gebco_2022_ascii_NORTH
 cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
-prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE_noWindSum.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -134,7 +134,7 @@ vRayleigh = 3000 # m/s
 depthCutoff = -50 # depth in m that corresponds to being ``inland''
 energy_path = 1 # 1 => shortest path by distance (direct line), 2 => shortest time path (shortest oceanic path)
 noLand = true # do not calculate anything if storm is over land
-sum_wndspd = true
+sum_wndspd = false
 
 # plotting settings
 baro_diag_plots = true # barometry diagnostics
@@ -2065,29 +2065,54 @@ if !go_to_results
             push!(PRED_stm_time, stm_time_sta)
         end
         print(string("Saving frequency predictions to: ",prediction_save_file,"\n"))
-        save(prediction_save_file,
-            "names", names,
-            "Hidx", Hidx,
-            "Vwind2Vphase", Vwind2Vphase,
-            "vRayleigh", vRayleigh,
-            "depthCutoff", depthCutoff,
-            "sum_wndspd", sum_wndspd,
-            "htime", htime, 
-            "wndspd", wndspd, 
-            "wndspd0", wndspd0,
-            "dInland", dInland, 
-            "MER_lat", MER_lat,
-            "MER_lon", MER_lon,
-            "dstnce", dstnce,
-            "dLandWest", dLandWest,
-            "minbar", minbar,
-            "azmth", azmth, 
-            "PRED_cst_ampl", PRED_cst_ampl, 
-            "PRED_stm_ampl", PRED_stm_ampl, 
-            "PRED_cst_time", PRED_cst_time, 
-            "PRED_stm_time", PRED_stm_time, 
-            "noLand",noLand,
-        )
+        if sum_wndspd
+            save(prediction_save_file,
+                "names", names,
+                "Hidx", Hidx,
+                "Vwind2Vphase", Vwind2Vphase,
+                "vRayleigh", vRayleigh,
+                "depthCutoff", depthCutoff,
+                "sum_wndspd", sum_wndspd,
+                "htime", htime, 
+                "wndspd", wndspd, 
+                "wndspd0", wndspd0,
+                "dInland", dInland, 
+                "MER_lat", MER_lat,
+                "MER_lon", MER_lon,
+                "dstnce", dstnce,
+                "dLandWest", dLandWest,
+                "minbar", minbar,
+                "azmth", azmth, 
+                "PRED_cst_ampl", PRED_cst_ampl, 
+                "PRED_stm_ampl", PRED_stm_ampl, 
+                "PRED_cst_time", PRED_cst_time, 
+                "PRED_stm_time", PRED_stm_time, 
+                "noLand",noLand,
+            )
+        else
+            save(prediction_save_file,
+                "names", names,
+                "Hidx", Hidx,
+                "Vwind2Vphase", Vwind2Vphase,
+                "vRayleigh", vRayleigh,
+                "depthCutoff", depthCutoff,
+                "sum_wndspd", sum_wndspd,
+                "htime", htime, 
+                "wndspd", wndspd, 
+                "dInland", dInland, 
+                "MER_lat", MER_lat,
+                "MER_lon", MER_lon,
+                "dstnce", dstnce,
+                "dLandWest", dLandWest,
+                "minbar", minbar,
+                "azmth", azmth, 
+                "PRED_cst_ampl", PRED_cst_ampl, 
+                "PRED_stm_ampl", PRED_stm_ampl, 
+                "PRED_cst_time", PRED_cst_time, 
+                "PRED_stm_time", PRED_stm_time, 
+                "noLand",noLand,
+            )
+        end
     else
         print(string("Loading frequency predictions from: ",prediction_save_file,"\n"))
         tmpvar = load(prediction_save_file)
