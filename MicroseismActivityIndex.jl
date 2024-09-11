@@ -178,7 +178,7 @@ Nweight = 0.3 # weight down based on how many points are included
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
-Vwind2Vphase = 0.1:0.01:1.0
+Vwind2Vphase = 0.1:0.02:1.0
 #Vwind2Vphase = 0.5:0.005:2.0
 Vwind2Vphase_fetchfile = string() # leave empty to run normal, otherwise put in fetch file
 function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
@@ -2406,7 +2406,7 @@ if !go_to_results
                 end
                 # get the maximum size window data
                 min_t = minimum(PRED_stm_time[k][j]).-Dates.Day(2) # first storm time
-                max_t = maximum(PRED_cst_time[k][j]).+Dates.Day(2) # last coast time
+                max_t = minimum([maximum(PRED_cst_time[k][j]) htime[j][end]+t_travel_cutoff]).+Dates.Day(2) # last coast time
                 tidx = findall(min_t .<= spectT[k] .<= max_t)
                 global t_obs = spectT[k][tidx]
                 global P_obs = spectP2[k][tidx]
@@ -3311,6 +3311,25 @@ hpall = plot(
     layout=grid(4,1),size=(600,1200),
 )
 savefig(hpall,string(cDataOut,"Vw2Vp_all_v_everything.pdf"))
+
+## MAKE PLOT OF VW2VP vs BINNED WINDSPEED and DISTANCE
+binned_wndspd = range(minimum(wndspd_all[gidx_Vw2Vp]),maximum(wndspd_all[gidx_Vw2Vp]),25)
+binned_Vw2Vp = map(x->mean(filter(!isnan,best_Vw2Vp_all[gidx_Vw2Vp[
+            findall(binned_wndspd[x-1] .<= wndspd_all[gidx_Vw2Vp] .<= binned_wndspd[x]
+        )]])),
+    2:lastindex(binned_wndspd))
+hpwndspd = simpleplot(binned_wndspd[2:end].-mean(diff(binned_wndspd))/2,binned_Vw2Vp,"Wndspd")
+binned_dstnce = range(minimum(dstnce_all[gidx_Vw2Vp]),maximum(dstnce_all[gidx_Vw2Vp]),25)
+binned_Vw2Vp = map(x->mean(filter(!isnan,best_Vw2Vp_all[gidx_Vw2Vp[
+            findall(binned_dstnce[x-1] .<= dstnce_all[gidx_Vw2Vp] .<= binned_dstnce[x]
+        )]])),
+    2:lastindex(binned_dstnce))
+hpdstnce = simpleplot(binned_dstnce[2:end].-mean(diff(binned_wndspd))/2,binned_Vw2Vp,"Dstnce")
+hp_all = plot(
+    hpwndspd,hpdstnce,
+    layout=grid(1,2),size=(900,600),
+)
+savefig(hp_all,string(cDataOut,"Vw2Vp_v_binned_dist_wnd.pdf"))
 
 
 ## MAKE PLOTS FOR AMPLITUDE SCALING
