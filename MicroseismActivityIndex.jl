@@ -159,7 +159,7 @@ smoothlgth = 48 # number of 15 minute steps (or whatever step size) to smooth ov
 sum_width = 0 # width of summing windows in hours (not date type, 0 to turn off)
 t_travel_cutoff = Dates.Day(21) # cutoff for t_travel
 removeStorm = false # remove storm part of the signal
-weightingAmp = 0.3 # how much range of weighting is asigned to amplitude (0 means no weighting)
+weightingAmp = 0.0 # how much range of weighting is asigned to amplitude (0 means no weighting)
 wghtByPoints = true # divide sum of squares by number of points
 penalizeForNaNs = false # weight by the non number of nan points
 nanPenaltyWeight = 0.25 # maximum penalty (0.4 = 40% = x1.4) for all NaN
@@ -170,10 +170,10 @@ ampparamfit = true # use parameter grid search (hough transform) to fit amplitud
 # for hough transform parameters:
 angles = 0:0.25:180
 Nrbins = 250
-linewidth = 0.2
+linewidth = 0.25
 N_trends = 1
-distweight = 0.2 # weight down based on average distance from the line
-Nweight = 0.3 # weight down based on how many points are included
+distweight = 0.3 # weight down based on average distance from the line
+Nweight = 0.6 # weight down based on how many points are included
 
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
@@ -3464,10 +3464,10 @@ Ascl_stm = obs_amp_stm ./ prd_amp_stm
 binstmp = range(
     minimum([Ascl_cst[gidx_cst]; Ascl_stm[gidx_stm]]),
     maximum([Ascl_cst[gidx_cst]; Ascl_stm[gidx_stm]]),
-    length=50,
+    length=20,
 )
-hpAscl = histogram(Ascl_cst[gidx_cst],title="Ascl",c=:red,alpha=0.5,label="Coast")
-histogram!(hpAscl,Ascl_stm[gidx_stm],c=:blue,alpha=0.5,label="Storm")
+hpAscl = histogram(Ascl_cst[gidx_cst],bins=binstmp,title="Ascl",c=:red,alpha=0.5,label="Coast")
+histogram!(hpAscl,Ascl_stm[gidx_stm],bins=binstmp,c=:blue,alpha=0.5,label="Storm")
 savefig(hpAscl,string(cDataOut,"Ascl_hist.pdf"))
 
 # plot ratio against depth, distance, and windspeed
