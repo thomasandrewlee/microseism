@@ -42,7 +42,7 @@ using FindPeaks1D
 
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
-cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum"
+cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_itr2"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
@@ -65,7 +65,7 @@ cInput_GEBCO = string(user_str,"Research/GEBCO_Bathymetry/gebco_2022_ascii_NORTH
 cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
-prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_2.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -168,7 +168,7 @@ normamps = 1 # perform amplitude normalization
                 # 0 - none, 1 - max, 2 - mean, 3 - median, 4 - area under curve
 ampparamfit = true # use parameter grid search (hough transform) to fit amplitude, if false use linear 
 # for hough transform parameters:
-angles = 0:0.25:180
+angles = 0:0.1:180
 Nrbins = 250
 linewidth = 0.25
 N_trends = 1
@@ -178,12 +178,12 @@ Nweight = 0.6 # weight down based on how many points are included
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
-Vwind2Vphase = 0.1:0.02:1.0
-#Vwind2Vphase = 0.5:0.005:2.0
+#Vwind2Vphase = 0.1:0.02:1.0
+Vwind2Vphase = [1./(2.0:-0.01:1.01); 1.0:0.01:2.0]
 Vwind2Vphase_fetchfile = string() # leave empty to run normal, otherwise put in fetch file
 function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
-    Vw2Vp_A = 1.0
-    Vw2Vp_B = 0.0
+    Vw2Vp_A = 0.3528
+    Vw2Vp_B = 9.277e-9
     # Vw2Vp_A = 0.35985
     # Vw2Vp_B = 0.00006
     # Vw2Vp_A = 0.079
@@ -3314,23 +3314,51 @@ savefig(hpall,string(cDataOut,"Vw2Vp_all_v_everything.pdf"))
 
 ## MAKE PLOT OF VW2VP vs BINNED WINDSPEED and DISTANCE
 binned_wndspd = range(minimum(wndspd_all[gidx_Vw2Vp]),maximum(wndspd_all[gidx_Vw2Vp]),25)
-binned_Vw2Vp = map(x->mean(filter(!isnan,best_Vw2Vp_all[gidx_Vw2Vp[
+binned_Vw2Vp_wnd = map(x->mean(filter(!isnan,best_Vw2Vp_all[gidx_Vw2Vp[
             findall(binned_wndspd[x-1] .<= wndspd_all[gidx_Vw2Vp] .<= binned_wndspd[x]
         )]])),
     2:lastindex(binned_wndspd))
-hpwndspd = simpleplot(binned_wndspd[2:end].-mean(diff(binned_wndspd))/2,binned_Vw2Vp,"Wndspd")
+hpwndspd = simpleplot(binned_wndspd[2:end].-mean(diff(binned_wndspd))/2,binned_Vw2Vp_wnd,"Wndspd")
 binned_dstnce = range(minimum(dstnce_all[gidx_Vw2Vp]),maximum(dstnce_all[gidx_Vw2Vp]),25)
-binned_Vw2Vp = map(x->mean(filter(!isnan,best_Vw2Vp_all[gidx_Vw2Vp[
+binned_Vw2Vp_dst = map(x->mean(filter(!isnan,best_Vw2Vp_all[gidx_Vw2Vp[
             findall(binned_dstnce[x-1] .<= dstnce_all[gidx_Vw2Vp] .<= binned_dstnce[x]
         )]])),
     2:lastindex(binned_dstnce))
-hpdstnce = simpleplot(binned_dstnce[2:end].-mean(diff(binned_wndspd))/2,binned_Vw2Vp,"Dstnce")
+hpdstnce = simpleplot(binned_dstnce[2:end].-mean(diff(binned_dstnce))/2,binned_Vw2Vp_dst,"Dstnce")
 hp_all = plot(
     hpwndspd,hpdstnce,
     layout=grid(1,2),size=(900,600),
 )
 savefig(hp_all,string(cDataOut,"Vw2Vp_v_binned_dist_wnd.pdf"))
 
+## MAKE THE SAME BINNED PLOTS WITH THE PARAMETRIC FIT
+global DC_tmp, scl_tmp, fit_tmp, hp_tmp = paramspacefit(
+        binned_wndspd[2:end].-mean(diff(binned_wndspd))/2,
+        binned_Vw2Vp_wnd.*100,
+        angles,Nrbins,linewidth,N_trends,distweight,Nweight
+    )
+DC_tmp = DC_tmp[1]/100; scl_tmp = scl_tmp[1]/100
+hpwndspd = scatter(
+    binned_wndspd[2:end].-mean(diff(binned_wndspd))/2,
+    binned_Vw2Vp_wnd, title="Wndspd",mc=:black,label="",ma=0.25)
+plot!(hpwndspd,binned_wndspd,binned_wndspd.*scl_tmp .+ DC_tmp,
+    label=string("DC=",DC_tmp,"; scl=",scl_tmp))
+global DC_tmp, scl_tmp, fit_tmp, hp_tmp = paramspacefit(
+        binned_dstnce[2:end].-mean(diff(binned_dstnce))/2,
+        binned_Vw2Vp_dst.*1e7,
+        angles,Nrbins,linewidth,N_trends,distweight,Nweight
+    )
+DC_tmp = DC_tmp[1]/1e7; scl_tmp = scl_tmp[1]/1e7
+hpdstnce = scatter(
+    binned_dstnce[2:end].-mean(diff(binned_dstnce))/2,
+    binned_Vw2Vp_dst, title="Dstnce",mc=:black,label="",ma=0.25)
+plot!(hpdstnce,binned_dstnce,binned_dstnce.*scl_tmp .+ DC_tmp,
+    label=string("DC=",DC_tmp,"; scl=",scl_tmp))
+hp_all = plot(
+        hpwndspd,hpdstnce,
+        layout=grid(1,2),size=(900,600),
+    )
+savefig(hp_all,string(cDataOut,"Vw2Vp_v_binned_dist_wnd_param.pdf"))
 
 ## MAKE PLOTS FOR AMPLITUDE SCALING
 # investigate amplitude scaling functional form
