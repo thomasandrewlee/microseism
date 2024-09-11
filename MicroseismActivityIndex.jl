@@ -42,7 +42,7 @@ using FindPeaks1D
 
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
-cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE_noWindSum"
+cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
@@ -65,7 +65,7 @@ cInput_GEBCO = string(user_str,"Research/GEBCO_Bathymetry/gebco_2022_ascii_NORTH
 cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
-prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE_noWindSum.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -178,7 +178,7 @@ Nweight = 0.3 # weight down based on how many points are included
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
-Vwind2Vphase = 0.2:0.001:0.8
+Vwind2Vphase = 0.1:0.01:1.0
 #Vwind2Vphase = 0.5:0.005:2.0
 Vwind2Vphase_fetchfile = string() # leave empty to run normal, otherwise put in fetch file
 function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
@@ -2440,6 +2440,7 @@ if !go_to_results
                             # trim time bounds (for the prediction)
                             gidx = findall(!isnan,PRED_cst_ampl[k][j])
                             gidx = gidx[(PRED_cst_time[k][j][ii,gidx].-htime[j][gidx]).<=t_travel_cutoff]
+                            global ptsusedratio = length(gidx)/length(htime[j])
                             if length(gidx)>0.75*sum(.!isnan.(PRED_cst_ampl[k][j])) # at least 75% of the total
                                 min_t = minimum(PRED_cst_time[k][j][ii,gidx]) # first time
                                 max_t = maximum(PRED_cst_time[k][j][ii,gidx]) # last coast time
@@ -2470,6 +2471,7 @@ if !go_to_results
                             # get indices for prediction that are non-nan and within time limit
                             gidx_cst = findall(!isnan,PRED_cst_ampl[k][j])
                             gidx_cst = gidx_cst[(PRED_cst_time[k][j][ii,gidx_cst].-htime[j][gidx_cst]).<=t_travel_cutoff]
+                            global ptsusedratio = length(gidx)/length(htime[j])
                             # get closest time indices
                             tcidx_cst = map(x->argmin(
                                 abs.(Dates.value.(spectT[k].-PRED_cst_time[k][j][ii,gidx_cst[x]]))),
@@ -2563,6 +2565,7 @@ if !go_to_results
                                 gidx = findall(.!isnan.(P_obs_cst) .& .!isnan.(P_prd_cst))
                                 tmpfit = sum(((P_obs_cst[gidx] .- P_prd_cst[gidx]).^2).*wghts[gidx])
                                 # end
+                                tmpfit = tmpfit * ptsusedratio
                                 if wghtByPoints
                                     tmpfit = tmpfit * (1/length(gidx)) # normalize by number of points
                                 end
