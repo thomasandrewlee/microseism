@@ -157,7 +157,7 @@ noYscalefreq = true # don't fix the yscale for the Hidx plots
 fitsmooth = false # use interpolation instead of single points to fit for storm dependent
 smoothlgth = 48 # number of 15 minute steps (or whatever step size) to smooth over
 sum_width = 0 # width of summing windows in hours (not date type, 0 to turn off)
-t_travel_cutoff = Dates.Day(30) # cutoff for t_travel
+t_travel_cutoff = Dates.Day(21) # cutoff for t_travel
 removeStorm = false # remove storm part of the signal
 weightingAmp = 0.3 # how much range of weighting is asigned to amplitude (0 means no weighting)
 wghtByPoints = true # divide sum of squares by number of points
@@ -2565,10 +2565,10 @@ if !go_to_results
                                 gidx = findall(.!isnan.(P_obs_cst) .& .!isnan.(P_prd_cst))
                                 tmpfit = sum(((P_obs_cst[gidx] .- P_prd_cst[gidx]).^2).*wghts[gidx])
                                 # end
-                                tmpfit = tmpfit * (1-ptsusedratio) # multiply by the fraction of unused points
                                 if wghtByPoints
                                     tmpfit = tmpfit * (1/length(gidx)) # normalize by number of points
                                 end
+                                tmpfit = tmpfit *(1+(1-ptsusedratio)) # multiply by the fraction of unused points (more unused points => higher score)
                                 if penalizeForNaNs 
                                     # get nan ratio = (1 - non nan ratio)
                                     nanratio = (1 - length(gidx)/length(tcommon))
