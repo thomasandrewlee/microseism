@@ -42,7 +42,7 @@ using FindPeaks1D
 
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
-cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroBED"
+cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
@@ -51,7 +51,7 @@ spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct
 spect_save_as_mat = false
 station_gains_file = [] # use this empty to avoid correcting gains
 station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
-use_baro = true
+use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
 baro_data_sac = [string(user_str,"Downloads/hrvbaro.550054/30/"),] # directories of sac
@@ -65,7 +65,7 @@ cInput_GEBCO = string(user_str,"Research/GEBCO_Bathymetry/gebco_2022_ascii_NORTH
 cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
-prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroBED.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.2_0.8_baroNONE.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
