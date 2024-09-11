@@ -2565,7 +2565,7 @@ if !go_to_results
                                 gidx = findall(.!isnan.(P_obs_cst) .& .!isnan.(P_prd_cst))
                                 tmpfit = sum(((P_obs_cst[gidx] .- P_prd_cst[gidx]).^2).*wghts[gidx])
                                 # end
-                                tmpfit = tmpfit * ptsusedratio
+                                tmpfit = tmpfit * (1-ptsusedratio) # multiply by the fraction of unused points
                                 if wghtByPoints
                                     tmpfit = tmpfit * (1/length(gidx)) # normalize by number of points
                                 end
