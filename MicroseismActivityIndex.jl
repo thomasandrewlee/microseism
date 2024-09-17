@@ -42,12 +42,12 @@ using FindPeaks1D
 
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
-cRunName = "HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_itr2"
+cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new1b_noHough"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
 spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.1_0.2.jld") # save file from initial readin
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
 spect_save_as_mat = false
 station_gains_file = [] # use this empty to avoid correcting gains
 station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
@@ -65,7 +65,7 @@ cInput_GEBCO = string(user_str,"Research/GEBCO_Bathymetry/gebco_2022_ascii_NORTH
 cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
-prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.1_0.2_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_2.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new1b.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -74,7 +74,7 @@ cDataOut = string(user_str,"Desktop/MAI/",cRunName,"/") # data output folder
 # station frequency and time information
 StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.STA.INST.CHNL format
 #plot_f_range = [0.01,0.6]
-plot_f_range = [0.1,0.2] # range of frequencies to plot things over
+plot_f_range = [0.03,0.3] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
 stime = Dates.DateTime(1988,1,1) # start time for spectra 
 etime = Dates.DateTime(2024,1,1) # end time for spectra 
@@ -139,7 +139,7 @@ sum_wndspd = false
 # plotting settings
 baro_diag_plots = true # barometry diagnostics
 makeHidxPlots = true
-makeHeatmaps = false
+makeHeatmaps = true
 makeQuarterlyHeatmaps = true
 makeMaps = true
 minmapbnds_y = [20, 60] # map bound ranges
@@ -147,7 +147,7 @@ minmapbnds_x = [-90, -45]
 xlim_coef = 0.12 # limit to align scatter/line plots with heatmaps (having legend)
 makeDiagnosticPlots = true # plot fit diagnostics into Hidx directory
 superDiagnostics = true # plot each Vw2Vpcoast fit
-makeHurricanePlots = false # make initial hurricane maps
+makeHurricanePlots = true # make initial hurricane maps
 makeHurricaneAnimation = false # animate storm tracks one by one
 makeMERlocationPlots = false # make MER plots
 separateDots = true # make a separate scatter plot with predictions (for post proc.)
@@ -166,24 +166,26 @@ nanPenaltyWeight = 0.25 # maximum penalty (0.4 = 40% = x1.4) for all NaN
 ignoreCoastOvlp = false # ignore the coast ovlp 
 normamps = 1 # perform amplitude normalization
                 # 0 - none, 1 - max, 2 - mean, 3 - median, 4 - area under curve
-ampparamfit = true # use parameter grid search (hough transform) to fit amplitude, if false use linear 
+ampparamfit = false # use parameter grid search (hough transform) to fit amplitude, if false use linear 
 # for hough transform parameters:
 angles = 0:0.1:180
 Nrbins = 250
-linewidth = 0.25
+linewidth = 0.5
 N_trends = 1
-distweight = 0.3 # weight down based on average distance from the line
-Nweight = 0.6 # weight down based on how many points are included
+distweight = 0.25 # weight down based on average distance from the line
+Nweight = 0.75 # weight down based on how many points are included
 
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
-#Vwind2Vphase = 0.1:0.02:1.0
-Vwind2Vphase = [1./(2.0:-0.01:1.01); 1.0:0.01:2.0]
+Vwind2Vphase = 0.1:0.02:1.0
+#Vwind2Vphase = [1 ./(2.0:-0.01:1.01); 1.0:0.01:2.0]
 Vwind2Vphase_fetchfile = string() # leave empty to run normal, otherwise put in fetch file
 function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
-    Vw2Vp_A = 0.3528
-    Vw2Vp_B = 9.277e-9
+    # Vw2Vp_A = 0.3141  # 2b no hough
+    # Vw2Vp_B = 2.905e-8
+    Vw2Vp_A = 1
+    Vw2Vp_B = 0
     # Vw2Vp_A = 0.35985
     # Vw2Vp_B = 0.00006
     # Vw2Vp_A = 0.079
@@ -191,9 +193,9 @@ function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
     # Vw2Vp_Linear a + bx
     pvel = (Vw2Vp_A .+ Vw2Vp_B.*dstnce).*wndspd0
     # dependence on windspeecd
-    # Vw2Vp_A = 0.59
-    # Vw2Vp_B = 0.01
-    # # Vw2Vp_Linear a + bx
+    # Vw2Vp_A = 0.912
+    # Vw2Vp_B = 0.004061
+    # # # Vw2Vp_Linear a + bx
     # pvel = (Vw2Vp_A .+ Vw2Vp_B.*wndspd0).*pvel
     # # Vw2Vp_Power ax^b
     # pvel = (Vw2Vp_A .* wndspd.^Vw2Vp_B).*wndspd
@@ -206,6 +208,8 @@ end
 function Ascl_cst_func(prdamp,wndspd)
     Ascl_cst_A = 1.0 # linear by default for now
     Ascl_cst_B = 0.0
+    # Ascl_cst_A = -0.7545 # 2b no hough
+    # Ascl_cst_B = 0.01319
     # # Linear a + bx
     # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*prdamp).*prdamp
     # # Power ax^b
@@ -213,8 +217,9 @@ function Ascl_cst_func(prdamp,wndspd)
     # Ascl_cst_B = -0.98366
     # Ascl_cst_A = 5.08133 # linear by default for now
     # Ascl_cst_B = -0.9666
-    obsamp = (Ascl_cst_A .* wndspd.^Ascl_cst_B).*prdamp.^2
-    obsamp = obsamp ./1000
+    obsamp = prdamp.^2
+    obsamp = log10.(obsamp).*10
+    obsamp = (Ascl_cst_A .+ Ascl_cst_B.*obsamp).*obsamp
     # # Log a + b log(x)
     # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*log.(prdamp)).*prdamp
     return obsamp
@@ -222,6 +227,8 @@ end
 function Ascl_stm_func(prdamp,wndspd)
     Ascl_stm_A = 1.0 # linear by default for now
     Ascl_stm_B = 0.0
+    # Ascl_stm_A = -0.7346 # 2b no hough
+    # Ascl_stm_B = 0.01238
     # # Linear a + bx
     # obsamp = (Ascl_stm_A .+ Ascl_stm_B.*prdamp).*prdamp
     # # Power ax^b
@@ -229,8 +236,9 @@ function Ascl_stm_func(prdamp,wndspd)
     # Ascl_stm_B = -0.9932
     # Ascl_stm_A = 5.38834 # linear by default for now
     # Ascl_stm_B = -0.98828
-    obsamp = (Ascl_stm_A .* wndspd.^Ascl_stm_B).*prdamp.^2
-    obsamp = obsamp ./1000
+    obsamp = prdamp.^2
+    obsamp = log10.(obsamp).*10
+    obsamp = (Ascl_stm_A .+ Ascl_stm_B.*obsamp).*obsamp
     # # Log a + b log(x)
     # obsamp = (Ascl_stm_A .+ Ascl_stm_B.*log.(prdamp)).*prdamp
     return obsamp
@@ -1530,7 +1538,7 @@ if !go_to_results
             # plot heatmaps for each Hidx
             for j in ProgressBar(1:lastindex(Hidx))    
                 # get desired x bounds
-                global tmpstime = H[Hidx[j]].time[end]-Dates.Hour(24*3)  # start time
+                global tmpstime = H[Hidx[j]].time[1]-Dates.Hour(24*3)  # start time
                 global tmpetime = H[Hidx[j]].time[end]+Dates.Hour(24*10) # end time
                 tmpetime2 = tmpetime+Dates.Millisecond(
                     convert(Int,round(xlim_coef*Dates.value(tmpetime-tmpstime)))
@@ -3204,7 +3212,7 @@ function linfit(hptmp,xdat,ydat)
     gidx = findall(.!isnan.(xdat) .& .!isnan.(ydat))
     (alin, blin) = linear_fit(xdat[gidx],ydat[gidx])
     xtmp = range(
-        maximum([minimum(filter(!isnan,xdat)),0]),
+        minimum(filter(!isnan,xdat)),
         maximum(filter(!isnan,xdat)),
         length=100,
     )
@@ -3498,9 +3506,13 @@ hpAscl = histogram(Ascl_cst[gidx_cst],bins=binstmp,title="Ascl",c=:red,alpha=0.5
 histogram!(hpAscl,Ascl_stm[gidx_stm],bins=binstmp,c=:blue,alpha=0.5,label="Storm")
 savefig(hpAscl,string(cDataOut,"Ascl_hist.pdf"))
 
+# get rid of outliers
+gidx_cst2 = findall(percentile(filter(!isnan,Ascl_cst[gidx_cst]),1) .<= Ascl_cst[gidx_cst] .<= percentile(filter(!isnan,Ascl_cst[gidx_cst]),96))
+gidx_stm2 = findall(percentile(filter(!isnan,Ascl_stm[gidx_stm]),1) .<= Ascl_stm[gidx_stm] .<= percentile(filter(!isnan,Ascl_cst[gidx_stm]),96))
+
 # plot ratio against depth, distance, and windspeed
-hp_prd_cst = simplelinplot(prd_amp_cst[gidx_cst],Ascl_cst[gidx_cst],"Prd Amp v. Ascl Coast")
-hp_prd_stm = simplelinplot(prd_amp_stm[gidx_stm],Ascl_stm[gidx_stm],"Prd Amp v. Ascl Storm")
+hp_prd_cst = simplelinplot(prd_amp_cst[gidx_cst[gidx_cst2]],Ascl_cst[gidx_cst[gidx_cst2]],"Prd Amp v. Ascl Coast")
+hp_prd_stm = simplelinplot(prd_amp_stm[gidx_stm[gidx_stm2]],Ascl_stm[gidx_stm[gidx_stm2]],"Prd Amp v. Ascl Storm")
 hp_bathy_cst = simplelinplot(-bathy_all[gidx_cst],Ascl_cst[gidx_cst],"Depth v. Ascl Coast")
 hp_bathy_stm = simplelinplot(-bathy_all[gidx_stm],Ascl_stm[gidx_stm],"Depth v. Ascl Storm")
 hp_dstnce_cst = simplelinplot(dstnce_all[gidx_cst]./1000,Ascl_cst[gidx_cst],"Dist2Sta v. Ascl Coast")
