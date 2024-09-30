@@ -3220,12 +3220,6 @@ plot!(hp,Vwind2Vphase,
     lc=:black,lw=1.5,label="Mean",)
 savefig(hp,string(cDataOut,"Vw2Vp_fits.pdf"))
 
-# make fit residual histograms
-hpcstfit = histogram(cst_amp_fit_prct_all.*100,bins=20,title="Coast Residual Fit (%)")
-hpstmfit = histogram(stm_amp_fit_prct_all.*100,bins=20,title="Storm Residual Fit (%)")
-hpall = plot(hpcstfit,hpstmfit,layout=grid(1,2),size=(1000,600))
-savefig(hpall,string(cDataOut,"FitResids.pdf"))
-
 ## DEFINE THE PLOTTING FUNCTIONS
 function linfit(hptmp,xdat,ydat)
     gidx = findall(.!isnan.(xdat) .& .!isnan.(ydat))
@@ -3288,6 +3282,31 @@ function colorscatter(xdat,ydat,zdat,ctitle,Ngrd)
     hpheat = heatmap(xgrd,ygrd,zgrd,title=ctitle)
     return hpscat, hpheat
 end
+
+## PLOT FIT RESIDUAL STUFF
+# make fit residual histograms
+hpcstfit = histogram(cst_amp_fit_prct_all.*100,bins=20,title="Coast Residual Fit (%)")
+hpstmfit = histogram(stm_amp_fit_prct_all.*100,bins=20,title="Storm Residual Fit (%)")
+hpall = plot(hpcstfit,hpstmfit,layout=grid(1,2),size=(1000,600))
+savefig(hpall,string(cDataOut,"FitResids.pdf"))
+# throw out outliers
+gidx_cst = findall(percentile(filter(!isnan,cst_amp_fit_prct_all),1) .<= cst_amp_fit_prct_all .<= percentile(filter(!isnan,cst_amp_fit_prct_all),99))
+gidx_stm = findall(percentile(filter(!isnan,stm_amp_fit_prct_all),1) .<= stm_amp_fit_prct_all .<= percentile(filter(!isnan,stm_amp_fit_prct_all),99))
+# plot ratio against depth, distance, and windspeed
+hp_bathy_cst = simplelinplot(-bathy_all[gidx_cst],cst_amp_fit_prct_all[gidx_cst],"Depth v. Coast Fit Resid (%)")
+hp_bathy_stm = simplelinplot(-bathy_all[gidx_stm],stm_amp_fit_prct_all[gidx_stm],"Depth v. Storm Fit Resid (%)")
+hp_dstnce_cst = simplelinplot(dstnce_all[gidx_cst]./1000,cst_amp_fit_prct_all[gidx_cst],"Dist2Sta v. Coast Fit Resid (%)")
+hp_dstnce_stm = simplelinplot(dstnce_all[gidx_stm]./1000,stm_amp_fit_prct_all[gidx_stm],"Dist2Sta v. Storm Fit Resid (%)")
+hp_dlw_cst = simplelinplot(dlwest_all[gidx_cst]./1000,cst_amp_fit_prct_all[gidx_cst],"Dist2Cst v. Coast Fit Resid (%)")
+hp_dlw_stm = simplelinplot(dlwest_all[gidx_stm]./1000,stm_amp_fit_prct_all[gidx_stm],"Dist2Cst v. Storm Fit Resid (%)")
+hp_wndspd_cst = simplelinplot(wndspd_all[gidx_cst],cst_amp_fit_prct_all[gidx_cst],"Wind Vel v. Coast Fit Resid (%)")
+hp_wndspd_stm = simplelinplot(wndspd_all[gidx_stm],stm_amp_fit_prct_all[gidx_stm],"Wind Vel v. Storm Fit Resid (%)")
+hpall = plot(
+    hp_wndspd_cst,hp_wndspd_stm,hp_bathy_cst,hp_bathy_stm,
+    hp_dlw_cst,hp_dlw_stm,hp_dstnce_cst,hp_dstnce_stm,
+    layout=grid(4,2),size=(800,1200)
+)
+savefig(hpall,string(cDataOut,"fitresids_v_everything.pdf"))
 
 ## MAKE PLOTS FOR THE VW2VP AGAINST VARIOUS
 hpavgwndspd = simpleplot(avgwndspd[:],best_Vw2Vp[:],"Avg Wndspd")
@@ -3531,7 +3550,7 @@ savefig(hpAscl,string(cDataOut,"Ascl_hist.pdf"))
 
 # get rid of outliers
 gidx_cst2 = findall(percentile(filter(!isnan,Ascl_cst[gidx_cst]),1) .<= Ascl_cst[gidx_cst] .<= percentile(filter(!isnan,Ascl_cst[gidx_cst]),96))
-gidx_stm2 = findall(percentile(filter(!isnan,Ascl_stm[gidx_stm]),1) .<= Ascl_stm[gidx_stm] .<= percentile(filter(!isnan,Ascl_cst[gidx_stm]),96))
+gidx_stm2 = findall(percentile(filter(!isnan,Ascl_stm[gidx_stm]),1) .<= Ascl_stm[gidx_stm] .<= percentile(filter(!isnan,Ascl_stm[gidx_stm]),96))
 
 # plot ratio against depth, distance, and windspeed
 hp_prd_cst = simplelinplot(prd_amp_cst[gidx_cst[gidx_cst2]],Ascl_cst[gidx_cst[gidx_cst2]],"Prd Amp v. Ascl Coast")
