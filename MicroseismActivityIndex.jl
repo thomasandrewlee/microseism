@@ -43,14 +43,17 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
+cRunName = "HRV_3640_TEST"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
-spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
+#spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr.jld") # save file from initial readin
 spect_save_as_mat = false
 station_gains_file = [] # use this empty to avoid correcting gains
-station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
+#station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
@@ -74,12 +77,12 @@ cDataOut = string(user_str,"Desktop/MAI/",cRunName,"/") # data output folder
 # station frequency and time information
 StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.STA.INST.CHNL format
 #plot_f_range = [0.01,0.6]
-plot_f_range = [0.03,0.3] # range of frequencies to plot things over
+plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
-stime = Dates.DateTime(1988,1,1) # start time for spectra 
-etime = Dates.DateTime(2024,1,1) # end time for spectra 
-# stime = Dates.DateTime(1936,1,1) # start time for spectra 
-# etime = Dates.DateTime(1941,1,1) # end time for spectra 
+# stime = Dates.DateTime(1988,1,1) # start time for spectra 
+# etime = Dates.DateTime(2024,1,1) # end time for spectra 
+stime = Dates.DateTime(1936,1,1) # start time for spectra 
+etime = Dates.DateTime(1941,1,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
@@ -95,11 +98,11 @@ wlen2 = [] # window length for each welch periodogram segment in seconds
 wovp2 = [] # overlap of welch periodogram overlap
 Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
 # # new version (historical data no welch)
-# wlen1 = 2*60 # length of time to compute each periodogram over (for spect)
-# wovp1 = .1 # overlap of time windows as a fraction of wlen1
-# wlen2 = [] # window length for each welch periodogram segment in seconds
-# wovp2 = [] # overlap of welch periodogram overlap
-# Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
+wlen1 = 2*60 # length of time to compute each periodogram over (for spect)
+wovp1 = .1 # overlap of time windows as a fraction of wlen1
+wlen2 = [] # window length for each welch periodogram segment in seconds
+wovp2 = [] # overlap of welch periodogram overlap
+Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
 
 # seismic culling and processing
 trimFimmediately = true # trim the spectF to plot_f_range (plot_f_range must not be empty) 
