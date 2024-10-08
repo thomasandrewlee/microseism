@@ -53,6 +53,11 @@ smoothing = 0.01 # smoothing window in Hz
 band1 = [14 20] # seconds
 band2 = [6 12] # seconds
 
+## CHECK DIRS
+if !isdir(c_dataout)
+    mkdir(c_dataout)
+end
+
 ## READ JLD DATA
 print("Reading spectrograms from JLD save files...\n")
 tmpvar = load(c_savespect_old)
@@ -171,7 +176,7 @@ for i in ProgressBar(1:lastindex(oldTall))
 end
 # plot
 pidx = 1:decimation_factor:lastindex(oldTall)
-hp1 = scatter!(oldTall[pidx],sum(oldDall,dims=1)[pidx],yaxis=:log,mc=:black,ms=1,ma=0.5,
+hp3 = scatter(oldTall[pidx],sum(oldDall,dims=1)[pidx],yaxis=:log,mc=:black,ms=1,ma=0.5,
     ylabel="pixel^2/Hz",title="HRV.ALL",label="",)
 
 ## TXFR FROM LPZ TO BHZ
@@ -191,18 +196,19 @@ gidx = findall(txfrf[1] .<= LPZspectF .<= txfrf[end])
 itp = LinearInterpolation(txfrf,vec(txfr_smth))
 txfr_int = itp(LPZspectF[gidx])
 # make plot
-hp2 = plot(1 ./txfrf,txfr,axis=:log,label="lpz2bhz",
+hp4 = plot(1 ./txfrf,txfr,axis=:log,label="lpz2bhz",
     xlabel="Period (s)",ylabel="pixels / (m/s)",)
-plot!(hp2,1 ./txfrf,txfr_smth,label=string(smoothing,"Hz smoothing"))
-scatter!(hp2,1 ./LPZspectF,txfr_int,label="interpolated")
+plot!(hp4,1 ./txfrf,txfr_smth,label=string(smoothing,"Hz smoothing"))
+scatter!(hp4,1 ./LPZspectF,txfr_int,label="interpolated")
 # compute transfer for power
 txfr_pwr = txfr_int.^2
 # remove response and convert to pseudo BHZ
 oldDall = oldDall ./ txfr_pwr
 # plot
-hp3 = scatter!(oldTall[pidx],sum(oldDall,dims=1)[pidx],yaxis=:log,mc=:black,ms=1,ma=0.5,
-    ylabel="pixel^2/Hz",title="Pseudo-BHZ HRV.ALL",label="",)
-hpa = plot(hp1,hp2,hp3,layout=grid(3,1),size=(1000,600))
+hp5 = scatter(oldTall[pidx],sum(oldDall,dims=1)[pidx],yaxis=:log,mc=:black,ms=1,ma=0.5,
+    ylabel="(m/s)^2/Hz",title="Pseudo-BHZ HRV.ALL",label="",)
+hpb = plot(hp3,hp4,hp5,layout=grid(3,1),size=(1000,600))
+savefig(hpb,string(c_dataout,""))
 
 ## FILTER DOWN TO 1D POWER ACROSS PRIMARY AND SECONDARY BANDS
 
