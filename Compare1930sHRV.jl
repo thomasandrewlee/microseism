@@ -251,7 +251,7 @@ for i = 1:Nbands
         stderr = sqrt(sum((y.-(a.+b.*x)).^2)/(length(x)-2))/sqrt(sum((x.-mean(x)).^2))
         return stderr
     end
-    olde = steslp(oldTyear[olidx],oldD[oldidx],olda,oldb)
+    olde = steslp(oldTyear[oldidx],oldD[oldidx],olda,oldb)
     newe = steslp(newTyear[newidx],newD[newidx],newa,newb)
     alle = steslp([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]],alla,allb)
     # get median power based on 1988-2023 and normalize by it
