@@ -224,14 +224,16 @@ hpb = plot(hp3,hp4,hp5,layout=grid(3,1),size=(800,1000))
 savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
 savefig(hp4,string(c_dataout,"lpz2bhz.pdf"))
 
+# intialize and save original newD
+newD0 = deepcopy(newD)
 Nbands = size(bands)[1]
 for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
     # get the filtered data
-    oldfidx = findall(1/band1[i,2].<=oldFall.<=1/band1[i,1])
+    oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
     oldD = vec(mean(oldDall[oldfidx,:],dims=1))
-    newfidx = findall(1/band1[i,2].<=newF.<=1/band1[i,1])
-    newD = vec(mean(newD[newfidx,:],dims=1))
+    newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
+    newD = vec(mean(newD0[newfidx,:],dims=1))
 
     ## GET OUT THE TRENDSs
     # get rid of outliers
