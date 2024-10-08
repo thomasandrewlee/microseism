@@ -37,6 +37,7 @@ using ProgressBars
 using Geodesics
 using NaNStatistics
 using Measures
+using CurveFit
 
 ## SETTINGS
 # output
@@ -50,8 +51,13 @@ decimation_factor = 5 # factor to decimate by for quick plots
 c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ/txfr.jld") 
 smoothing = 0.01 # smoothing window in Hz
 # bands for primary and secondary
-band1 = [14 20] # seconds
-band2 = [6 12] # seconds
+bands = [ # seconds (one pair is a row with a lower and upper value)
+    6 13; #secondary
+    13 20; # primary
+    6 20; # all microseism
+    ] 
+# outlier culling
+outliers = [2 98] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -71,6 +77,13 @@ newD = tmpvar["spectD"]
 newT = tmpvar["spectT"]
 newF = tmpvar["spectF"]
 tmpvar = []
+# collapse new data
+if length(newnames)==1
+    newnames = newnames[1]
+    newD = newD[1]
+    newT = newT[1]
+    newF = newF[1]
+end
 
 ## GET TXFR FROM EACH OF SPX and LPX to LPZ
 print("Calculating analog component to components transfer functions...\n")
@@ -207,11 +220,66 @@ oldDall = oldDall ./ txfr_pwr
 # plot
 hp5 = scatter(oldTall[pidx],sum(oldDall,dims=1)[pidx],yaxis=:log,mc=:black,ms=1,ma=0.5,
     ylabel="(m/s)^2/Hz",title="Pseudo-BHZ HRV.ALL",label="",)
-hpb = plot(hp3,hp4,hp5,layout=grid(3,1),size=(1000,600))
-savefig(hpb,string(c_dataout,""))
+hpb = plot(hp3,hp4,hp5,layout=grid(3,1),size=(800,1000))
+savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
+savefig(hp4,string(c_dataout,"lpz2bhz.pdf"))
 
-## FILTER DOWN TO 1D POWER ACROSS PRIMARY AND SECONDARY BANDS
+Nbands = size(bands)[1]
+for i = 1:Nbands
+    ## FILTER DOWN TO 1D POWER ACROSS BANDS
+    # get the filtered data
+    oldfidx = findall(1/band1[i,2].<=oldFall.<=1/band1[i,1])
+    oldD = vec(mean(oldDall[oldfidx,:],dims=1))
+    newfidx = findall(1/band1[i,2].<=newF.<=1/band1[i,1])
+    newD = vec(mean(newD[newfidx,:],dims=1))
 
-## GET OUT THE TRENDS
+    ## GET OUT THE TRENDSs
+    # get rid of outliers
+    oldidx = findall(percentile(filter(!isnan,oldD),outliers[1]) .<= oldD .<= percentile(filter(!isnan,oldD),outliers[2]))
+    newidx = findall(percentile(filter(!isnan,newD),outliers[1]) .<= newD .<= percentile(filter(!isnan,newD),outliers[2]))
+    # do linear fit for old / new and primary / secondary
+    oldTyear = Dates.value.(oldTall)/(1000*60*60*24*365.2422) # convert to years
+    newTyear = Dates.value.(newT)/(1000*60*60*24*365.2422)
+    (olda, oldb) = linear_fit(oldTyear[oldidx],oldD[oldidx]) # coefficient b will be in (m/s)^2/Hz / year
+    (newa, newb) = linear_fit(newTyear[newidx],newD[newidx])
+    (alla, allb) = linear_fit([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]])
+    # get standard error of slope
+    function steslp(x,y,a,b)
+        # x and y are data, a is DC b is scaling
+        stderr = sqrt(sum((y.-(a.+b.*x)).^2)/(length(x)-2))/sqrt(sum((x.-mean(x)).^2))
+        return stderr
+    end
+    olde = steslp(oldTyear[olidx],oldD[oldidx],olda,oldb)
+    newe = steslp(newTyear[newidx],newD[newidx],newa,newb)
+    alle = steslp([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]],alla,allb)
+    # get median power based on 1988-2023 and normalize by it
+    med = median(filter(!isnan,newD))
+    # figure out energy % coefficients
+    oldbp = oldb/med
+    newbp = newb/med
+    allbp = allb/med
+    oldep = olderr/med
+    newep = newerr/med
+    allep = allerr/med
 
-## PLOT
+    ## REPORT
+    print(string("\n",bands[i,1],"-",bands[i,2],"s Band:\n"))
+    print(string("  Historical Trend is: ",oldb,"+/-",oldbe," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)\n"))
+    print(string("  Modern Trend is:     ",newb,"+/-",newbe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)\n"))
+    print(string("  Complete Trend is:   ",allb,"+/-",allbe," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)\n"))
+
+    ## PLOT
+    # plot data
+    hp6 = scatter([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]],
+        mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",label="",legend=:outerbottom,
+        title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    # plot old trend
+    xtmp = range(oldTyear[1],newTyear[end],100)
+    plot!(hp6,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",oldb,"+/-",oldbe," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)"))
+    # plot new trend
+    plot!(hp6,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",newb,"+/-",newbe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)"))
+    # plot both trend
+    plot!(hp6,xtmp,alla.+allb.*xtmp,label=string("Comp. ",allb,"+/-",allbe," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)"))
+    # save
+    savefig(hp6,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
+end
