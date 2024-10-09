@@ -139,8 +139,8 @@ for i = 1:lastindex(oldT)
         tmpD = fill!(Array{Float64,2}(undef,(length(LPZspectF),length(oldT[i]))),NaN)
         for j = 1:lastindex(oldT[i])
             if sum(isnan.(oldD[:,j]))==0
-                gidx = findall(oldF[i][1].<=LPZspectF.<=oldF[i][end])
-                itp = LinearInterpolation(oldF[i],oldD[i][:,j])
+                local gidx = findall(oldF[i][1].<=LPZspectF.<=oldF[i][end])
+                local itp = LinearInterpolation(oldF[i],oldD[i][:,j])
                 tmpD[gidx,j] = itp(LPZspectF[gidx])
             end
         end
@@ -231,9 +231,9 @@ for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
-    oldD = vec(mean(oldDall[oldfidx,:],dims=1))
+    global oldD = vec(mean(oldDall[oldfidx,:],dims=1))
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
-    newD = vec(mean(newD0[newfidx,:],dims=1))
+    global newD = vec(mean(newD0[newfidx,:],dims=1))
 
     ## GET OUT THE TRENDSs
     # get rid of outliers
@@ -260,15 +260,15 @@ for i = 1:Nbands
     oldbp = oldb/med
     newbp = newb/med
     allbp = allb/med
-    oldep = olderr/med
-    newep = newerr/med
-    allep = allerr/med
+    oldep = olde/med
+    newep = newe/med
+    allep = alle/med
 
     ## REPORT
     print(string("\n",bands[i,1],"-",bands[i,2],"s Band:\n"))
-    print(string("  Historical Trend is: ",oldb,"+/-",oldbe," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)\n"))
-    print(string("  Modern Trend is:     ",newb,"+/-",newbe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)\n"))
-    print(string("  Complete Trend is:   ",allb,"+/-",allbe," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)\n"))
+    print(string("  Historical Trend is: ",oldb,"+/-",olde," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)\n"))
+    print(string("  Modern Trend is:     ",newb,"+/-",newe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)\n"))
+    print(string("  Complete Trend is:   ",allb,"+/-",alle," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)\n"))
 
     ## PLOT
     # plot data
@@ -277,11 +277,11 @@ for i = 1:Nbands
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     # plot old trend
     xtmp = range(oldTyear[1],newTyear[end],100)
-    plot!(hp6,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",oldb,"+/-",oldbe," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)"))
+    plot!(hp6,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",oldb,"+/-",olde," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)"))
     # plot new trend
-    plot!(hp6,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",newb,"+/-",newbe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)"))
+    plot!(hp6,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",newb,"+/-",newe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)"))
     # plot both trend
-    plot!(hp6,xtmp,alla.+allb.*xtmp,label=string("Comp. ",allb,"+/-",allbe," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)"))
+    plot!(hp6,xtmp,alla.+allb.*xtmp,label=string("Comp. ",allb,"+/-",alle," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)"))
     # save
     savefig(hp6,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
 end
