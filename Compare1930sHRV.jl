@@ -73,14 +73,14 @@ oldT = tmpvar["spectT"]
 oldF = tmpvar["spectF"]
 tmpvar2 = load(c_savespect_new)
 newnames = tmpvar2["names"]
-newD = tmpvar2["spectD"]
+newD0 = tmpvar2["spectD"]
 newT = tmpvar2["spectT"]
 newF = tmpvar2["spectF"]
 tmpvar = []; tmpvar2 = []
 # collapse new data
 if length(newnames)==1
     newnames = newnames[1]
-    newD = newD[1]
+    newD0 = newD0[1]
     newT = newT[1]
     newF = newF[1]
 end
@@ -187,10 +187,20 @@ for i in ProgressBar(1:lastindex(oldTall))
         oldDall[:,i] = spectstack
     end
 end
-# plot
+# plot old stuff
 pidx = 1:decimation_factor:lastindex(oldTall)
-hp3 = scatter(oldTall[pidx],sum(oldDall,dims=1)[pidx],yaxis=:log,mc=:black,ms=1,ma=0.5,
+hp3 = scatter(oldTall[pidx],mean(oldDall,dims=1)[pidx],mc=:black,ms=1,ma=0.5,
     ylabel="pixel^2/Hz",title="HRV.ALL",label="",)
+hp6 = plot(1 ./oldFall,
+    map(x->mean(filter(!isnan,oldDall[x,:])),1:lastindex(LPZspectF)),
+    lc=:black,xlabel="Period (s)",title="HRV.ALL",label="",ylabel="pixel^2/Hz")
+# plot new stuff
+newpidx = 1:decimation_factor:lastindex(newT)
+hp8 = scatter(newT[newpidx],mean(newD0,dims=1)[newpidx],mc=:black,ms=1,ma=0.5,
+    ylabel="(m/s)^2/Hz",title="HRV.BHZ",label="",)
+hp9 = plot(1 ./newF,
+    map(x->mean(filter(!isnan,newD[x,:])),1:lastindex(newF)),
+    lc=:black,xlabel="Period (s)",title="HRV.BHZ",label="",ylabel="(m/s)^2/Hz")
 
 ## TXFR FROM LPZ TO BHZ
 # load transfer function
@@ -218,14 +228,16 @@ txfr_pwr = txfr_int.^2
 # remove response and convert to pseudo BHZ
 oldDall = oldDall ./ txfr_pwr
 # plot
-hp5 = scatter(oldTall[pidx],sum(oldDall,dims=1)[pidx],yaxis=:log,mc=:black,ms=1,ma=0.5,
+hp5 = scatter(oldTall[pidx],mean(oldDall,dims=1)[pidx],mc=:black,ms=1,ma=0.5,
     ylabel="(m/s)^2/Hz",title="Pseudo-BHZ HRV.ALL",label="",)
-hpb = plot(hp3,hp4,hp5,layout=grid(3,1),size=(800,1000))
+hp7 = plot(1 ./LPZspectF,
+    map(x->mean(filter(!isnan,oldDall[x,:])),1:lastindex(LPZspectF)),
+    lc=:black,xlabel="Period (s)",title="Pseudo-BHZ HRV.ALL",label="",ylabel="(m/s)^2/Hz")
+hpb = plot(hp3,hp5,hp8,hp6,hp7,hp9,layout=grid(2,3),size=(1000,1400))
 savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
 savefig(hp4,string(c_dataout,"lpz2bhz.pdf"))
 
 # intialize and save original newD
-newD0 = deepcopy(newD)
 Nbands = size(bands)[1]
 for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
@@ -272,16 +284,16 @@ for i = 1:Nbands
 
     ## PLOT
     # plot data
-    hp6 = scatter([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]],
+    hpc = scatter([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]],
         mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",label="",legend=:outerbottom,
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     # plot old trend
     xtmp = range(oldTyear[1],newTyear[end],100)
-    plot!(hp6,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",oldb,"+/-",olde," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)"))
+    plot!(hpc,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",oldb,"+/-",olde," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)"))
     # plot new trend
-    plot!(hp6,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",newb,"+/-",newe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)"))
+    plot!(hpc,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",newb,"+/-",newe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)"))
     # plot both trend
-    plot!(hp6,xtmp,alla.+allb.*xtmp,label=string("Comp. ",allb,"+/-",alle," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)"))
+    plot!(hpc,xtmp,alla.+allb.*xtmp,label=string("Comp. ",allb,"+/-",alle," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)"))
     # save
-    savefig(hp6,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
+    savefig(hpc,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
 end
