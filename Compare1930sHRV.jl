@@ -71,12 +71,12 @@ oldnames = tmpvar["names"]
 oldD = tmpvar["spectD"]
 oldT = tmpvar["spectT"]
 oldF = tmpvar["spectF"]
-tmpvar = load(c_savespect_new)
-newnames = tmpvar["names"]
-newD = tmpvar["spectD"]
-newT = tmpvar["spectT"]
-newF = tmpvar["spectF"]
-tmpvar = []
+tmpvar2 = load(c_savespect_new)
+newnames = tmpvar2["names"]
+newD = tmpvar2["spectD"]
+newT = tmpvar2["spectT"]
+newF = tmpvar2["spectF"]
+tmpvar = []; tmpvar2 = []
 # collapse new data
 if length(newnames)==1
     newnames = newnames[1]
