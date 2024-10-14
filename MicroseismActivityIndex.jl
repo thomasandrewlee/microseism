@@ -43,17 +43,18 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "HRV_3640_TEST"
+cRunName = "HRV_8823_NEW_TEST"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
 #spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
-spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr.jld") # save file from initial readin
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld") # save file from initial readin
 spect_save_as_mat = false
-station_gains_file = [] # use this empty to avoid correcting gains
-#station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
+#station_gains_file = [] # use this empty to avoid correcting gains
+station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
@@ -68,7 +69,7 @@ cInput_GEBCO = string(user_str,"Research/GEBCO_Bathymetry/gebco_2022_ascii_NORTH
 cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
-prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_FINDFIT.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new1b_FINDFIT.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -79,10 +80,10 @@ StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.
 #plot_f_range = [0.01,0.6]
 plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
-# stime = Dates.DateTime(1988,1,1) # start time for spectra 
-# etime = Dates.DateTime(2024,1,1) # end time for spectra 
-stime = Dates.DateTime(1936,1,1) # start time for spectra 
-etime = Dates.DateTime(1941,1,1) # end time for spectra 
+stime = Dates.DateTime(1988,1,1) # start time for spectra 
+etime = Dates.DateTime(2024,1,1) # end time for spectra 
+# stime = Dates.DateTime(1936,1,1) # start time for spectra 
+# etime = Dates.DateTime(1941,1,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
@@ -98,10 +99,10 @@ wlen2 = [] # window length for each welch periodogram segment in seconds
 wovp2 = [] # overlap of welch periodogram overlap
 Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
 # # new version (historical data no welch)
-wlen1 = 2*60 # length of time to compute each periodogram over (for spect)
-wovp1 = .1 # overlap of time windows as a fraction of wlen1
-wlen2 = [] # window length for each welch periodogram segment in seconds
-wovp2 = [] # overlap of welch periodogram overlap
+# wlen1 = 2*60 # length of time to compute each periodogram over (for spect)
+# wovp1 = .1 # overlap of time windows as a fraction of wlen1
+# wlen2 = [] # window length for each welch periodogram segment in seconds
+# wovp2 = [] # overlap of welch periodogram overlap
 Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
 
 # seismic culling and processing
@@ -181,15 +182,15 @@ Nweight = 0.75 # weight down based on how many points are included
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
-# Vwind2Vphase = 0.1:0.02:1.0
+Vwind2Vphase = 0.1:0.02:1.0
 #Vwind2Vphase = [1 ./(2.0:-0.01:1.01); 1.0:0.01:2.0]
 Vwind2Vphase = [1]
 Vwind2Vphase_fetchfile = string() # leave empty to run normal, otherwise put in fetch file
 function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
-    Vw2Vp_A = 0.3141  # 2b no hough
-    Vw2Vp_B = 2.905e-8
-    # Vw2Vp_A = 1
-    # Vw2Vp_B = 0
+    # Vw2Vp_A = 0.3141  # 2b no hough
+    # Vw2Vp_B = 2.905e-8
+    Vw2Vp_A = 1
+    Vw2Vp_B = 0
     # Vw2Vp_A = 0.35985
     # Vw2Vp_B = 0.00006
     # Vw2Vp_A = 0.079
@@ -210,10 +211,10 @@ end
 
 # amplitude scaling variations
 function Ascl_cst_func(prdamp,wndspd)
-    # Ascl_cst_A = 1.0 # linear by default for now
-    # Ascl_cst_B = 0.0
-    Ascl_cst_A = -0.7545 # 2b no hough
-    Ascl_cst_B = 0.01319
+    Ascl_cst_A = 1.0 # linear by default for now
+    Ascl_cst_B = 0.0
+    # Ascl_cst_A = -0.7545 # 2b no hough
+    # Ascl_cst_B = 0.01319
     # # Linear a + bx
     # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*prdamp).*prdamp
     # # Power ax^b
@@ -229,10 +230,10 @@ function Ascl_cst_func(prdamp,wndspd)
     return obsamp
 end
 function Ascl_stm_func(prdamp,wndspd)
-    # Ascl_stm_A = 1.0 # linear by default for now
-    # Ascl_stm_B = 0.0
-    Ascl_stm_A = -0.7346 # 2b no hough
-    Ascl_stm_B = 0.01238
+    Ascl_stm_A = 1.0 # linear by default for now
+    Ascl_stm_B = 0.0
+    # Ascl_stm_A = -0.7346 # 2b no hough
+    # Ascl_stm_B = 0.01238
     # # Linear a + bx
     # obsamp = (Ascl_stm_A .+ Ascl_stm_B.*prdamp).*prdamp
     # # Power ax^b
@@ -421,7 +422,7 @@ if !go_to_results
                                 oldBD = tmpvar["spectD"][ridx,tidx]
                                 if sum(isreal.(oldBD))<0.01*length(oldBD)
                                     # go from fft (with imaginaries) to psd if needed
-                                    oldBD = (abs.(oldBD).^2) ./ 240000
+                                    oldBD = (abs.(oldBD).^2) ./ 240000 # should this be 12000 to properly normalize??
                                     # CHANGE ME!!!! This is normalized based on 20Hz and 10min window for HRV BHZ
                                     # this gives 12000 points multiplied by a sample frequency of 20 Hz = 240000
                                 end

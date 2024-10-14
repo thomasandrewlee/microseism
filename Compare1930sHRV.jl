@@ -43,7 +43,7 @@ using CurveFit
 # output
 c_dataout = string(usr_str,"Desktop/1930sHRVComp/")
 # spectpaths
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr.jld")
 # plotting
 decimation_factor = 5 # factor to decimate by for quick plots
@@ -84,6 +84,7 @@ if length(newnames)==1
     newT = newT[1]
     newF = newF[1]
 end
+# if you're erroring on this read in try starting REPL first then running
 
 ## GET TXFR FROM EACH OF SPX and LPX to LPZ
 print("Calculating analog component to components transfer functions...\n")
@@ -159,7 +160,7 @@ maxT = maximum(maximum.(oldT))
 stepT = mode(map(x->mode(diff(oldT[x])),1:lastindex(oldT)))
 oldTall = minT:stepT:maxT
 oldFall = deepcopy(LPZspectF)
-oldDall = fill!(Array{Float64,2}(undef,(length(oldFall),length(oldTall))),NaN)
+oldDall0 = fill!(Array{Float64,2}(undef,(length(oldFall),length(oldTall))),NaN)
 # loop over and start averaging
 print("Combining analog components...\n")
 for i in ProgressBar(1:lastindex(oldTall))
@@ -184,22 +185,30 @@ for i in ProgressBar(1:lastindex(oldTall))
         # stack the spectra
         spectstack = mean(spectstack,dims=2)
         # save the spectra
-        oldDall[:,i] = spectstack
+        oldDall0[:,i] = spectstack
     end
 end
 # plot old stuff
 pidx = 1:decimation_factor:lastindex(oldTall)
-hp3 = scatter(oldTall[pidx],mean(oldDall,dims=1)[pidx],mc=:black,ms=1,ma=0.5,
-    ylabel="pixel^2/Hz",title="HRV.ALL",label="",)
-hp6 = plot(1 ./oldFall,
-    map(x->mean(filter(!isnan,oldDall[x,:])),1:lastindex(LPZspectF)),
+hp3 = scatter(oldTall[pidx],vec(mean(oldDall0,dims=1))[pidx],mc=:black,ms=1,ma=0.5,
+    ylabel="pixel^2/Hz",title="HRV.ALL",label="",ylim=(
+        percentile(vec(filter(!isnan,mean(oldDall0,dims=1))),outliers[1]),
+        percentile(vec(filter(!isnan,mean(oldDall0,dims=1))),outliers[2])
+    ))
+fidx = findall(0 .<= (1 ./oldFall) .<= 30)
+hp6 = plot(1 ./oldFall[fidx],
+    map(x->mean(filter(!isnan,oldDall0[fidx[x],:])),1:lastindex(fidx)),xlim=(0,30),
     lc=:black,xlabel="Period (s)",title="HRV.ALL",label="",ylabel="pixel^2/Hz")
 # plot new stuff
 newpidx = 1:decimation_factor:lastindex(newT)
-hp8 = scatter(newT[newpidx],mean(newD0,dims=1)[newpidx],mc=:black,ms=1,ma=0.5,
-    ylabel="(m/s)^2/Hz",title="HRV.BHZ",label="",)
-hp9 = plot(1 ./newF,
-    map(x->mean(filter(!isnan,newD[x,:])),1:lastindex(newF)),
+hp8 = scatter(newT[newpidx],vec(mean(newD0,dims=1))[newpidx],mc=:black,ms=1,ma=0.5,
+    ylabel="(m/s)^2/Hz",title="HRV.BHZ",label="",ylim=(
+        percentile(vec(filter(!isnan,mean(newD0,dims=1))),outliers[1]),
+        percentile(vec(filter(!isnan,mean(newD0,dims=1))),outliers[2])
+    ))
+fidx = findall(0 .<= (1 ./newF) .<= 30)
+hp9 = plot(1 ./newF[fidx],
+    map(x->mean(filter(!isnan,newD0[fidx[x],:])),1:lastindex(fidx)),xlim=(0,30),
     lc=:black,xlabel="Period (s)",title="HRV.BHZ",label="",ylabel="(m/s)^2/Hz")
 
 ## TXFR FROM LPZ TO BHZ
@@ -226,14 +235,19 @@ scatter!(hp4,1 ./LPZspectF,txfr_int,label="interpolated")
 # compute transfer for power
 txfr_pwr = txfr_int.^2
 # remove response and convert to pseudo BHZ
-oldDall = oldDall ./ txfr_pwr
+oldDall = oldDall0 ./ txfr_pwr
 # plot
-hp5 = scatter(oldTall[pidx],mean(oldDall,dims=1)[pidx],mc=:black,ms=1,ma=0.5,
-    ylabel="(m/s)^2/Hz",title="Pseudo-BHZ HRV.ALL",label="",)
-hp7 = plot(1 ./LPZspectF,
-    map(x->mean(filter(!isnan,oldDall[x,:])),1:lastindex(LPZspectF)),
-    lc=:black,xlabel="Period (s)",title="Pseudo-BHZ HRV.ALL",label="",ylabel="(m/s)^2/Hz")
-hpb = plot(hp3,hp5,hp8,hp6,hp7,hp9,layout=grid(2,3),size=(1000,1400))
+hp5 = scatter(oldTall[pidx],vec(mean(oldDall,dims=1))[pidx],mc=:black,ms=1,ma=0.5,
+    ylabel="(m/s)^2/Hz",title="Pseudo-BHZ HRV.ALL",label="",ylim=(
+        percentile(vec(filter(!isnan,mean(oldDall,dims=1))),outliers[1]),
+        percentile(vec(filter(!isnan,mean(oldDall,dims=1))),outliers[2])
+    ))
+fidx = findall(0 .<= (1 ./LPZspectF) .<= 30)
+hp7 = plot(1 ./LPZspectF[fidx],
+    map(x->mean(filter(!isnan,oldDall[fidx[x],:])),1:lastindex(fidx)),
+    lc=:black,xlabel="Period (s)",title="Pseudo-BHZ HRV.ALL",label="",ylabel="(m/s)^2/Hz",xlim=(0,30),)
+hpb = plot(hp3,hp5,hp8,hp6,hp7,hp9,layout=grid(2,3),size=(1600,800),
+    left_margin=10mm,bottom_margin=10mm,)
 savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
 savefig(hp4,string(c_dataout,"lpz2bhz.pdf"))
 
