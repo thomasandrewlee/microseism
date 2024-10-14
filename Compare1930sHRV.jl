@@ -44,7 +44,7 @@ using CurveFit
 c_dataout = string(usr_str,"Desktop/1930sHRVComp/")
 # spectpaths
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
-c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr.jld")
+c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
 # plotting
 decimation_factor = 5 # factor to decimate by for quick plots
 # path to txfr fcn
