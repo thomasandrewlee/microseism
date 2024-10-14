@@ -82,8 +82,8 @@ plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
 stime = Dates.DateTime(1988,1,1) # start time for spectra 
 etime = Dates.DateTime(2024,1,1) # end time for spectra 
-# stime = Dates.DateTime(1936,1,1) # start time for spectra 
-# etime = Dates.DateTime(1941,1,1) # end time for spectra 
+stime = Dates.DateTime(1936,1,1) # start time for spectra 
+etime = Dates.DateTime(1941,1,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
