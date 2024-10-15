@@ -52,16 +52,21 @@ c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl/txfr.jld")
 smoothing = 0.01 # smoothing window in Hz
 # time filtering (to avoid seasonal observational density biases in historical)
 goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
+goodmonths = []
+# channels to use for old
+goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
 rollmedwind = Dates.Day(60) # set to zero for none
+maxNaNratio = 0.6 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 bands = [ # seconds (one pair is a row with a lower and upper value)
     6 13; #secondary
     13 20; # primary
     6 20; # all microseism
+    5 10; # reliable looking part of response
     ] 
 # outlier culling
-outliers = [0 99.9] # percentiles for culling
+outliers = [0 98] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -69,6 +74,7 @@ if !isdir(c_dataout)
 end
 
 ## READ JLD DATA
+# read old data
 print("Reading spectrograms from JLD save files...\n")
 tmpvar = load(c_savespect_old)
 oldnames = tmpvar["names"]
@@ -76,6 +82,13 @@ oldD = tmpvar["spectD"]
 oldT = tmpvar["spectT"]
 oldF = tmpvar["spectF"]
 tmpvar2 = load(c_savespect_new)
+# remove stations not in goodchannels
+gidx = findall(map(x->sum(oldnames[x].==goodchannels).>0,1:lastindex(oldnames)))
+oldnames = oldnames[gidx]
+oldD = oldD[gidx]
+oldT = oldT[gidx]
+oldF = oldF[gidx]
+# read new data
 newnames = tmpvar2["names"]
 newD0 = tmpvar2["spectD"]
 newT = tmpvar2["spectT"]
@@ -262,44 +275,60 @@ for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
-    global oldD = vec(mean(oldDall[oldfidx,:],dims=1))
+    oldD = vec(mean(oldDall[oldfidx,:],dims=1))
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
-    global newD = vec(mean(newD0[newfidx,:],dims=1))
+    newD = vec(mean(newD0[newfidx,:],dims=1))
 
-    ## GET OUT THE TRENDS
+    ## CLEAN UP THE DATA
     # get rid of outliers
     oldidx = findall(percentile(filter(!isnan,oldD),outliers[1]) .<= oldD .<= percentile(filter(!isnan,oldD),outliers[2]))
     newidx = findall(percentile(filter(!isnan,newD),outliers[1]) .<= newD .<= percentile(filter(!isnan,newD),outliers[2]))
-    oldD = oldD[oldidx]
-    oldTfilt = oldTall[oldidx]
-    newD = newD[newidx]
-    newTfilt = newT[newidx]
+    # initialize new vectors
+    oldDfilt = fill!(rand(length(oldD)),NaN)
+    oldTfilt = deepcopy(oldTall)
+    newDfilt = fill!(rand(length(newD)),NaN)
+    newTfilt = deepcopy(newT)
+    # plug in valid values
+    oldDfilt[oldidx] = oldD[oldidx]
+    newDfilt[newidx] = newD[newidx]
     # get only the valid months if requested
     if !isempty(goodmonths)
         oldmonth = map(x->Dates.month.(oldTfilt).==goodmonths[x],1:lastindex(goodmonths))
-        oldmidx = findall(sum(oldmonth))
-        oldD = oldD[oldmidx]
-        oldTfilt = oldTfilt[oldmidx]
+        oldbmidx = findall(sum(oldmonth).==0)
+        oldDfilt[oldmidx] .= NaN
         newmonth = map(x->Dates.month.(newTfilt).==goodmonths[x],1:lastindex(goodmonths))
-        newmidx = findall(sum(newmonth))
-        newD = newD[newmidx]
-        newTfilt = newTfilt[newmidx]
+        newbmidx = findall(sum(newmonth).==0)
+        newDfilt[newmidx] .= NaN
     end
+
+    ## GET THE ROLLING MEDIA
+    if rollmedwind>0
+        oldDfilt0 = deepcopy(oldDfilt)
+        Nmedwind = convert(Int,round(rollmedwind/mode(diff(oldTfilt))))
+        oldDfilt = lf.movingmedian(oldDfilt,Nmedwind,maxNaNratio)
+        newDfilt0 = deepcopy(newDfilt)
+        Nmedwind = convert(Int,round(rollmedwind/mode(diff(newTfilt))))
+        newDfilt = lf.movingmedian(newDfilt,Nmedwind,maxNaNratio)
+    end
+    
+    ## GET OUT THE TRENDS
     # do linear fit for old / new and primary / secondary
     oldTyear = Dates.value.(oldTfilt)/(1000*60*60*24*365.2422) # convert to years
     newTyear = Dates.value.(newTfilt)/(1000*60*60*24*365.2422)
-    (olda, oldb) = linear_fit(oldTyear,oldD) # coefficient b will be in (m/s)^2/Hz / year
-    (newa, newb) = linear_fit(newTyear,newD)
-    (alla, allb) = linear_fit([oldTyear; newTyear],[oldD; newD])
+    ogidx = findall(.!isnan.(oldDfilt))
+    ngidx = findall(.!isnan.(newDfilt))
+    (olda, oldb) = linear_fit(oldTyear[ogidx],oldDfilt[ogidx]) # coefficient b will be in (m/s)^2/Hz / year
+    (newa, newb) = linear_fit(newTyear[ngidx],newDfilt[ngidx])
+    (alla, allb) = linear_fit([oldTyear[ogidx]; newTyear[ngidx]],[oldDfilt[ogidx]; newDfilt[ngidx]])
     # get standard error of slope
     function steslp(x,y,a,b)
         # x and y are data, a is DC b is scaling
         stderr = sqrt(sum((y.-(a.+b.*x)).^2)/(length(x)-2))/sqrt(sum((x.-mean(x)).^2))
         return stderr
     end
-    olde = steslp(oldTyear,oldD,olda,oldb)
-    newe = steslp(newTyear,newD,newa,newb)
-    alle = steslp([oldTyear; newTyear],[oldD; newD],alla,allb)
+    olde = steslp(oldTyear[ogidx],oldDfilt[ogidx],olda,oldb)
+    newe = steslp(newTyear[ngidx],newDfilt[ngidx],newa,newb)
+    alle = steslp([oldTyear[ogidx]; newTyear[ngidx]],[oldDfilt[ogidx]; newDfilt[ngidx]],alla,allb)
     # get median power based on 1988-2023 and normalize by it
     med = median(filter(!isnan,newD))
     # figure out energy % coefficients
@@ -309,8 +338,6 @@ for i = 1:Nbands
     oldep = olde/med
     newep = newe/med
     allep = alle/med
-
-    ## GET THE ROLLING MEDIAN
 
     ## REPORT
     print(string("\n",bands[i,1],"-",bands[i,2],"s Band:\n"))
@@ -323,7 +350,7 @@ for i = 1:Nbands
 
     ## PLOT ALL THE DATA
     # plot data
-    hpc = scatter([oldTyear; newTyear],[oldD; newD],
+    hpc = scatter([oldTyear; newTyear],[oldDfilt; newDfilt],
         mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",label="",legend=:outerbottom,
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     # plot old trend
@@ -340,17 +367,20 @@ for i = 1:Nbands
     savefig(hpc,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
 
     ## PLOT OLD DATA BY ITSELF
-    hpd1 = scatter(oldTyear,oldD,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",size=(600,600),
+    hpd1 = scatter(oldTyear,oldDfilt,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",
         label="",legend=:outerbottom,title=string(bands[i,1],"-",bands[i,2],"s Band"))
     xtmp = range(oldTyear[1],oldTyear[end],100)
     plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
         " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
     ## PLOT NEW DATA BY ITSELF
-    hpd2 = scatter(newTyearnewD,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",size=(600,1200),
+    hpd2 = scatter(newTyear,newDfilt,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",
         label="",legend=:outerbottom,title=string(bands[i,1],"-",bands[i,2],"s Band"))
     xtmp = range(newTyear[1],newTyear[end],100)
     plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
         " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
     ## COMBINE
-    hpd = plot(hpd1,hpd2,layout=grid(1,2))
+    hpd = plot(hpd1,hpd2,layout=grid(1,2),size=(2000,800))
+    savefig(hpd,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Split.pdf"))
 end
+
+print("\nDone!\n")
