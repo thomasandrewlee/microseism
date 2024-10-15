@@ -41,7 +41,7 @@ using CurveFit
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_JJA/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl/")
 # spectpaths
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -51,22 +51,24 @@ decimation_factor = 5 # factor to decimate by for quick plots
 c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl/txfr.jld") 
 smoothing = 0.01 # smoothing window in Hz
 # time filtering (to avoid seasonal observational density biases in historical)
+usejdayfilter = true # filter on days that have data for the entire set
 goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
-#goodmonths = []
+goodmonths = []
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
 rollmedwind = Dates.Day(60) # set to zero for none
-maxNaNratio = 0.6 # maximum ratio of NaN to data in rolling median
+maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 bands = [ # seconds (one pair is a row with a lower and upper value)
     6 13; #secondary
     13 20; # primary
     6 20; # all microseism
     5 10; # reliable looking part of response
+    1 10; # peterson secondary peak
     ] 
 # outlier culling
-outliers = [0 98] # percentiles for culling
+outliers = [0 97] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -279,6 +281,28 @@ for i = 1:Nbands
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
     global newD = vec(mean(newD0[newfidx,:],dims=1))
 
+    ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
+    if usejdayfilter
+        oldjdays = []
+        oldyrs = unique(Dates.year.(oldTall))
+        for j = 1:lastindex(oldyrs)
+            # find data points in a given year
+            yidx = findall(Dates.year.(oldTall).==oldyrs[j])
+            # get the points with data
+            gidx = findall(.!isnan.(oldD[yidx]))
+            # get the jdays with data
+            push!(oldjdays,unique(Dates.dayofyear.(oldTall[yidx[gidx]])))
+        end
+        # get the intersect
+        oldjdayint = oldjdays[1]
+        for j = 1:lastindex(oldjdays)
+            oldjdayint = intersect(oldjdayint,oldjdays[j])
+        end
+        # filter old data
+
+        # filter new data
+    end
+
     ## CLEAN UP THE DATA
     # get only the valid months if requested
     if !isempty(goodmonths)
@@ -375,7 +399,7 @@ for i = 1:Nbands
         scatter!(hpd1,oldTyear,oldDfilt0,
         mc=:gray,ma=0.5,ms=1,label="")
     end
-    plot!(hpd1,oldTyear,oldDfilt,lw=1.5,
+    plot!(hpd1,oldTyear,oldDfilt,lw=4,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(oldTyear[1],oldTyear[end],100)
     plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
@@ -388,7 +412,7 @@ for i = 1:Nbands
         scatter!(hpd2,newTyear,newDfilt0,
         mc=:gray,ma=0.5,ms=1,label="")
     end
-    plot!(hpd2,newTyear,newDfilt,lw=1.5,
+    plot!(hpd2,newTyear,newDfilt,lw=4,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(newTyear[1],newTyear[end],100)
     plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
