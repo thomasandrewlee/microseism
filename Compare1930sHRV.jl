@@ -41,7 +41,7 @@ using CurveFit
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_JJA/")
 # spectpaths
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -52,7 +52,7 @@ c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl/txfr.jld")
 smoothing = 0.01 # smoothing window in Hz
 # time filtering (to avoid seasonal observational density biases in historical)
 goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
-goodmonths = []
+#goodmonths = []
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
@@ -275,40 +275,40 @@ for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
-    oldD = vec(mean(oldDall[oldfidx,:],dims=1))
+    global oldD = vec(mean(oldDall[oldfidx,:],dims=1))
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
-    newD = vec(mean(newD0[newfidx,:],dims=1))
+    global newD = vec(mean(newD0[newfidx,:],dims=1))
 
     ## CLEAN UP THE DATA
+    # get only the valid months if requested
+    if !isempty(goodmonths)
+        oldmonth = map(x->Dates.month.(oldTall).==goodmonths[x],1:lastindex(goodmonths))
+        oldbmidx = findall(sum(oldmonth).==0)
+        oldD[oldbmidx] .= NaN
+        newmonth = map(x->Dates.month.(newT).==goodmonths[x],1:lastindex(goodmonths))
+        newbmidx = findall(sum(newmonth).==0)
+        newD[newbmidx] .= NaN
+    end
     # get rid of outliers
     oldidx = findall(percentile(filter(!isnan,oldD),outliers[1]) .<= oldD .<= percentile(filter(!isnan,oldD),outliers[2]))
     newidx = findall(percentile(filter(!isnan,newD),outliers[1]) .<= newD .<= percentile(filter(!isnan,newD),outliers[2]))
     # initialize new vectors
-    oldDfilt = fill!(rand(length(oldD)),NaN)
+    global oldDfilt = fill!(rand(length(oldD)),NaN)
     oldTfilt = deepcopy(oldTall)
-    newDfilt = fill!(rand(length(newD)),NaN)
+    global newDfilt = fill!(rand(length(newD)),NaN)
     newTfilt = deepcopy(newT)
     # plug in valid values
     oldDfilt[oldidx] = oldD[oldidx]
     newDfilt[newidx] = newD[newidx]
-    # get only the valid months if requested
-    if !isempty(goodmonths)
-        oldmonth = map(x->Dates.month.(oldTfilt).==goodmonths[x],1:lastindex(goodmonths))
-        oldbmidx = findall(sum(oldmonth).==0)
-        oldDfilt[oldmidx] .= NaN
-        newmonth = map(x->Dates.month.(newTfilt).==goodmonths[x],1:lastindex(goodmonths))
-        newbmidx = findall(sum(newmonth).==0)
-        newDfilt[newmidx] .= NaN
-    end
 
     ## GET THE ROLLING MEDIA
-    if rollmedwind>0
+    if rollmedwind>Dates.Day(0)
         oldDfilt0 = deepcopy(oldDfilt)
         Nmedwind = convert(Int,round(rollmedwind/mode(diff(oldTfilt))))
-        oldDfilt = lf.movingmedian(oldDfilt,Nmedwind,maxNaNratio)
+        global oldDfilt = lf.movingmedian(oldDfilt,Nmedwind,maxNaNratio)
         newDfilt0 = deepcopy(newDfilt)
         Nmedwind = convert(Int,round(rollmedwind/mode(diff(newTfilt))))
-        newDfilt = lf.movingmedian(newDfilt,Nmedwind,maxNaNratio)
+        global newDfilt = lf.movingmedian(newDfilt,Nmedwind,maxNaNratio)
     end
     
     ## GET OUT THE TRENDS
@@ -350,8 +350,9 @@ for i = 1:Nbands
 
     ## PLOT ALL THE DATA
     # plot data
-    hpc = scatter([oldTyear; newTyear],[oldDfilt; newDfilt],
-        mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",label="",legend=:outerbottom,
+    hpc = plot([oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],
+        lc=:black,lw=1.5,ylabel="(m/s)^2/Hz",legend=:outerbottom,
+        label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     # plot old trend
     xtmp = range(oldTyear[1],newTyear[end],100)
@@ -367,14 +368,28 @@ for i = 1:Nbands
     savefig(hpc,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
 
     ## PLOT OLD DATA BY ITSELF
-    hpd1 = scatter(oldTyear,oldDfilt,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",
-        label="",legend=:outerbottom,title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    hpd1 = plot([],[],
+        ylabel="(m/s)^2/Hz",legend=:outerbottom,label="",
+        title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    if rollmedwind>Dates.Day(0)
+        scatter!(hpd1,oldTyear,oldDfilt0,
+        mc=:gray,ma=0.5,ms=1,label="")
+    end
+    plot!(hpd1,oldTyear,oldDfilt,lw=1.5,
+        label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(oldTyear[1],oldTyear[end],100)
     plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
         " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
     ## PLOT NEW DATA BY ITSELF
-    hpd2 = scatter(newTyear,newDfilt,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",
-        label="",legend=:outerbottom,title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    hpd2 = plot([],[],
+        ylabel="(m/s)^2/Hz",legend=:outerbottom,label="",
+        title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    if rollmedwind>Dates.Day(0)
+        scatter!(hpd2,newTyear,newDfilt0,
+        mc=:gray,ma=0.5,ms=1,label="")
+    end
+    plot!(hpd2,newTyear,newDfilt,lw=1.5,
+        label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(newTyear[1],newTyear[end],100)
     plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
         " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
