@@ -41,15 +41,19 @@ using CurveFit
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sHRVComp/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl/")
 # spectpaths
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
 # plotting
 decimation_factor = 5 # factor to decimate by for quick plots
 # path to txfr fcn
-c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ/txfr.jld") 
+c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl/txfr.jld") 
 smoothing = 0.01 # smoothing window in Hz
+# time filtering (to avoid seasonal observational density biases in historical)
+goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
+# rolling median
+rollmedwind = Dates.Day(60) # set to zero for none
 # bands for primary and secondary
 bands = [ # seconds (one pair is a row with a lower and upper value)
     6 13; #secondary
@@ -57,7 +61,7 @@ bands = [ # seconds (one pair is a row with a lower and upper value)
     6 20; # all microseism
     ] 
 # outlier culling
-outliers = [2 98] # percentiles for culling
+outliers = [0 99.9] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -197,7 +201,7 @@ hp3 = scatter(oldTall[pidx],vec(mean(oldDall0,dims=1))[pidx],mc=:black,ms=1,ma=0
     ))
 fidx = findall(0 .<= (1 ./oldFall) .<= 30)
 hp6 = plot(1 ./oldFall[fidx],
-    map(x->mean(filter(!isnan,oldDall0[fidx[x],:])),1:lastindex(fidx)),xlim=(0,30),
+    map(x->median(filter(!isnan,oldDall0[fidx[x],:])),1:lastindex(fidx)),xlim=(0,30),yaxis=:log,
     lc=:black,xlabel="Period (s)",title="HRV.ALL",label="",ylabel="pixel^2/Hz")
 # plot new stuff
 newpidx = 1:decimation_factor:lastindex(newT)
@@ -208,7 +212,7 @@ hp8 = scatter(newT[newpidx],vec(mean(newD0,dims=1))[newpidx],mc=:black,ms=1,ma=0
     ))
 fidx = findall(0 .<= (1 ./newF) .<= 30)
 hp9 = plot(1 ./newF[fidx],
-    map(x->mean(filter(!isnan,newD0[fidx[x],:])),1:lastindex(fidx)),xlim=(0,30),
+    map(x->median(filter(!isnan,newD0[fidx[x],:])),1:lastindex(fidx)),xlim=(0,30),yaxis=:log,
     lc=:black,xlabel="Period (s)",title="HRV.BHZ",label="",ylabel="(m/s)^2/Hz")
 
 ## TXFR FROM LPZ TO BHZ
@@ -244,8 +248,9 @@ hp5 = scatter(oldTall[pidx],vec(mean(oldDall,dims=1))[pidx],mc=:black,ms=1,ma=0.
     ))
 fidx = findall(0 .<= (1 ./LPZspectF) .<= 30)
 hp7 = plot(1 ./LPZspectF[fidx],
-    map(x->mean(filter(!isnan,oldDall[fidx[x],:])),1:lastindex(fidx)),
-    lc=:black,xlabel="Period (s)",title="Pseudo-BHZ HRV.ALL",label="",ylabel="(m/s)^2/Hz",xlim=(0,30),)
+    map(x->median(filter(!isnan,oldDall[fidx[x],:])),1:lastindex(fidx)),
+    lc=:black,xlabel="Period (s)",title="Pseudo-BHZ HRV.ALL",label="",ylabel="(m/s)^2/Hz",
+    xlim=(0,30),yaxis=:log,)
 hpb = plot(hp3,hp5,hp8,hp6,hp7,hp9,layout=grid(2,3),size=(1600,800),
     left_margin=10mm,bottom_margin=10mm,)
 savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
@@ -261,25 +266,40 @@ for i = 1:Nbands
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
     global newD = vec(mean(newD0[newfidx,:],dims=1))
 
-    ## GET OUT THE TRENDSs
+    ## GET OUT THE TRENDS
     # get rid of outliers
     oldidx = findall(percentile(filter(!isnan,oldD),outliers[1]) .<= oldD .<= percentile(filter(!isnan,oldD),outliers[2]))
     newidx = findall(percentile(filter(!isnan,newD),outliers[1]) .<= newD .<= percentile(filter(!isnan,newD),outliers[2]))
+    oldD = oldD[oldidx]
+    oldTfilt = oldTall[oldidx]
+    newD = newD[newidx]
+    newTfilt = newT[newidx]
+    # get only the valid months if requested
+    if !isempty(goodmonths)
+        oldmonth = map(x->Dates.month.(oldTfilt).==goodmonths[x],1:lastindex(goodmonths))
+        oldmidx = findall(sum(oldmonth))
+        oldD = oldD[oldmidx]
+        oldTfilt = oldTfilt[oldmidx]
+        newmonth = map(x->Dates.month.(newTfilt).==goodmonths[x],1:lastindex(goodmonths))
+        newmidx = findall(sum(newmonth))
+        newD = newD[newmidx]
+        newTfilt = newTfilt[newmidx]
+    end
     # do linear fit for old / new and primary / secondary
-    oldTyear = Dates.value.(oldTall)/(1000*60*60*24*365.2422) # convert to years
-    newTyear = Dates.value.(newT)/(1000*60*60*24*365.2422)
-    (olda, oldb) = linear_fit(oldTyear[oldidx],oldD[oldidx]) # coefficient b will be in (m/s)^2/Hz / year
-    (newa, newb) = linear_fit(newTyear[newidx],newD[newidx])
-    (alla, allb) = linear_fit([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]])
+    oldTyear = Dates.value.(oldTfilt)/(1000*60*60*24*365.2422) # convert to years
+    newTyear = Dates.value.(newTfilt)/(1000*60*60*24*365.2422)
+    (olda, oldb) = linear_fit(oldTyear,oldD) # coefficient b will be in (m/s)^2/Hz / year
+    (newa, newb) = linear_fit(newTyear,newD)
+    (alla, allb) = linear_fit([oldTyear; newTyear],[oldD; newD])
     # get standard error of slope
     function steslp(x,y,a,b)
         # x and y are data, a is DC b is scaling
         stderr = sqrt(sum((y.-(a.+b.*x)).^2)/(length(x)-2))/sqrt(sum((x.-mean(x)).^2))
         return stderr
     end
-    olde = steslp(oldTyear[oldidx],oldD[oldidx],olda,oldb)
-    newe = steslp(newTyear[newidx],newD[newidx],newa,newb)
-    alle = steslp([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]],alla,allb)
+    olde = steslp(oldTyear,oldD,olda,oldb)
+    newe = steslp(newTyear,newD,newa,newb)
+    alle = steslp([oldTyear; newTyear],[oldD; newD],alla,allb)
     # get median power based on 1988-2023 and normalize by it
     med = median(filter(!isnan,newD))
     # figure out energy % coefficients
@@ -290,24 +310,47 @@ for i = 1:Nbands
     newep = newe/med
     allep = alle/med
 
+    ## GET THE ROLLING MEDIAN
+
     ## REPORT
     print(string("\n",bands[i,1],"-",bands[i,2],"s Band:\n"))
-    print(string("  Historical Trend is: ",oldb,"+/-",olde," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)\n"))
-    print(string("  Modern Trend is:     ",newb,"+/-",newe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)\n"))
-    print(string("  Complete Trend is:   ",allb,"+/-",alle," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)\n"))
+    print(string("  Historical Trend is: ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
+        " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)\n"))
+    print(string("  Modern Trend is:     ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
+        " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)\n"))
+    print(string("  Complete Trend is:   ",round(allb,sigdigits=2),"+/-",round(alle,sigdigits=2),
+        " (m/s)^2/Hz (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)\n"))
 
-    ## PLOT
+    ## PLOT ALL THE DATA
     # plot data
-    hpc = scatter([oldTyear[oldidx]; newTyear[newidx]],[oldD[oldidx]; newD[newidx]],
+    hpc = scatter([oldTyear; newTyear],[oldD; newD],
         mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",label="",legend=:outerbottom,
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     # plot old trend
     xtmp = range(oldTyear[1],newTyear[end],100)
-    plot!(hpc,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",oldb,"+/-",olde," (m/s)^2/Hz (",oldbp,"+/-",oldep," % rel. med.)"))
+    plot!(hpc,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
+        " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
     # plot new trend
-    plot!(hpc,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",newb,"+/-",newe," (m/s)^2/Hz (",newbp,"+/-",newep," % rel. med.)"))
+    plot!(hpc,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
+        " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
     # plot both trend
-    plot!(hpc,xtmp,alla.+allb.*xtmp,label=string("Comp. ",allb,"+/-",alle," (m/s)^2/Hz (",allbp,"+/-",allep," % rel. med.)"))
+    plot!(hpc,xtmp,alla.+allb.*xtmp,label=string("Comp. ",round(allb,sigdigits=2),"+/-",round(alle,sigdigits=2),
+        " (m/s)^2/Hz (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)"))
     # save
     savefig(hpc,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
+
+    ## PLOT OLD DATA BY ITSELF
+    hpd1 = scatter(oldTyear,oldD,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",size=(600,600),
+        label="",legend=:outerbottom,title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    xtmp = range(oldTyear[1],oldTyear[end],100)
+    plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
+        " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
+    ## PLOT NEW DATA BY ITSELF
+    hpd2 = scatter(newTyearnewD,mc=:black,ma=0.5,ms=1,ylabel="(m/s)^2/Hz",size=(600,1200),
+        label="",legend=:outerbottom,title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    xtmp = range(newTyear[1],newTyear[end],100)
+    plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
+        " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
+    ## COMBINE
+    hpd = plot(hpd1,hpd2,layout=grid(1,2))
 end
