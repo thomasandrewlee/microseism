@@ -52,6 +52,9 @@ c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl/txfr.jld")
 smoothing = 0.01 # smoothing window in Hz
 # time filtering (to avoid seasonal observational density biases in historical)
 usejdayfilter = true # filter on days that have data for the entire set
+filtersize = 3 # size of window in days
+filterstep = 1 # step of filter window in days
+filtercomp = 0.2 # ratio of data to total size needed
 goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
 goodmonths = []
 # channels to use for old
@@ -283,24 +286,45 @@ for i = 1:Nbands
 
     ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
     if usejdayfilter
-        oldjdays = []
-        oldyrs = unique(Dates.year.(oldTall))
-        for j = 1:lastindex(oldyrs)
+        oldjdays = Dates.dayofyear(oldTall)
+        olddatacov = fill!(Vector{Float64}(undef,length(oldTall)),NaN)
+        oldyrs = Dates.year.(oldTall)
+        windowstrt = 1:filterstep:366-filtersize
+        oldyrsu = unique(oldyrs)
+        windowidx = []
+        for j = 1:lastindex(oldyrsu)
             # find data points in a given year
-            yidx = findall(Dates.year.(oldTall).==oldyrs[j])
+            yidx = findall(oldyrs.==oldyrsu[j])
             # get the points with data
-            gidx = findall(.!isnan.(oldD[yidx]))
-            # get the jdays with data
-            push!(oldjdays,unique(Dates.dayofyear.(oldTall[yidx[gidx]])))
+            nonanidx = .!isnan.(oldD[yidx])
+            # get the amount of data for each jday
+            tmpdatacov = map(x->mean(nonanidx[findall(
+                    windowstrt[x] .<= oldjdays[yidx] .<= windowstrt[x]+filtersize 
+                )]),
+                1:lastindex(windowstrt))
+            # find data above threshold
+            tmpdataidx = findall(tmpdatacov .>= filtercomp)
+            # add this years data
+            push!(windowidx,tmpdataidx)
         end
         # get the intersect
-        oldjdayint = oldjdays[1]
-        for j = 1:lastindex(oldjdays)
-            oldjdayint = intersect(oldjdayint,oldjdays[j])
+        windowidxint = windowidx[1]
+        for j = 1:lastindex(windowidx)
+            windowidxint = intersect(windowidxint,windowidx[j])
         end
+        # convert window indices to jdays
+        filtjdays = []
+        for j = 1:lastindex(windowidxint)
+            append!(filtjdays,windowstrt[windowidxint[j]]:windowstrt[windowidxint[j]]+filtersize)
+        end
+        filtjdays = unique(filtjdays)
         # filter old data
-
+        oldbidx = findall(sum(map(x->filtjdays[x].==oldjdays,1:lastindex(filtjdays))).==0)
+        oldD[oldbidx] .= NaN
         # filter new data
+        newjdays = Dates.dayofyear(newT)
+        newbidx = findall(sum(map(x->filtjdays[x].==newjdays,1:lastindex(filtjdays))).==0)
+        newD[newbidx] .= NaN
     end
 
     ## CLEAN UP THE DATA
