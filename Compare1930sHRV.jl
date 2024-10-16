@@ -52,15 +52,16 @@ c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl/txfr.jld")
 smoothing = 0.01 # smoothing window in Hz
 # time filtering (to avoid seasonal observational density biases in historical)
 usejdayfilter = true # filter on days that have data for the entire set
-filtersize = 3 # size of window in days
+filtersize = 1 # size of window in days
 filterstep = 1 # step of filter window in days
 filtercomp = 0.2 # ratio of data to total size needed
-goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
+#goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
 goodmonths = []
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
-rollmedwind = Dates.Day(60) # set to zero for none
+#rollmedwind = Dates.Day(60) # set to zero for none
+rollmedwind = Dates.Day(0)
 maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 bands = [ # seconds (one pair is a row with a lower and upper value)
@@ -286,7 +287,7 @@ for i = 1:Nbands
 
     ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
     if usejdayfilter
-        oldjdays = Dates.dayofyear(oldTall)
+        oldjdays = Dates.dayofyear.(oldTall)
         olddatacov = fill!(Vector{Float64}(undef,length(oldTall)),NaN)
         oldyrs = Dates.year.(oldTall)
         windowstrt = 1:filterstep:366-filtersize
@@ -322,7 +323,7 @@ for i = 1:Nbands
         oldbidx = findall(sum(map(x->filtjdays[x].==oldjdays,1:lastindex(filtjdays))).==0)
         oldD[oldbidx] .= NaN
         # filter new data
-        newjdays = Dates.dayofyear(newT)
+        newjdays = Dates.dayofyear.(newT)
         newbidx = findall(sum(map(x->filtjdays[x].==newjdays,1:lastindex(filtjdays))).==0)
         newD[newbidx] .= NaN
     end
