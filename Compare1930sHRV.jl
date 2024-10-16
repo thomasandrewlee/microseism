@@ -41,27 +41,28 @@ using CurveFit
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med60_steps/")
 # spectpaths
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
 # plotting
 decimation_factor = 5 # factor to decimate by for quick plots
 # path to txfr fcn
-c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl/txfr.jld") 
+c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl_stack10/txfr.jld") 
 smoothing = 0.01 # smoothing window in Hz
 # time filtering (to avoid seasonal observational density biases in historical)
 usejdayfilter = true # filter on days that have data for the entire set
-filtersize = 1 # size of window in days
-filterstep = 1 # step of filter window in days
+filtersize = 2 # size of window in days
+filterstep = 0.5 # step of filter window in days
 filtercomp = 0.2 # ratio of data to total size needed
 #goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
+#goodmonths = [Dates.May Dates.June Dates.July] # leave empty to use all
 goodmonths = []
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
-#rollmedwind = Dates.Day(60) # set to zero for none
-rollmedwind = Dates.Day(0)
+rollmedwind = Dates.Day(60) # set to zero for none
+#rollmedwind = Dates.Day(0)
 maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 bands = [ # seconds (one pair is a row with a lower and upper value)
@@ -70,6 +71,23 @@ bands = [ # seconds (one pair is a row with a lower and upper value)
     6 20; # all microseism
     5 10; # reliable looking part of response
     1 10; # peterson secondary peak
+    ] 
+bands = [ # seconds (one pair is a row with a lower and upper value)
+    1 6; # stepped bands
+    2 7;
+    3 8;
+    4 9;
+    5 10;
+    6 11;
+    7 12;
+    8 13;
+    9 14;
+    10 15;
+    11 16;
+    12 17;
+    13 18;
+    14 19;
+    15 20;
     ] 
 # outlier culling
 outliers = [0 97] # percentiles for culling
