@@ -41,7 +41,7 @@ using CurveFit
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med60_steps/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med60_steps10_90/")
 # spectpaths
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -50,6 +50,8 @@ decimation_factor = 5 # factor to decimate by for quick plots
 # path to txfr fcn
 c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl_stack10/txfr.jld") 
 smoothing = 0.01 # smoothing window in Hz
+# data handling
+useroot = true # use square root instead of power
 # time filtering (to avoid seasonal observational density biases in historical)
 usejdayfilter = true # filter on days that have data for the entire set
 filtersize = 2 # size of window in days
@@ -63,7 +65,7 @@ goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
 rollmedwind = Dates.Day(60) # set to zero for none
 #rollmedwind = Dates.Day(0)
-maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
+maxNaNratio = 0.8 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 bands = [ # seconds (one pair is a row with a lower and upper value)
     6 13; #secondary
@@ -89,8 +91,22 @@ bands = [ # seconds (one pair is a row with a lower and upper value)
     14 19;
     15 20;
     ] 
+bands = [ # seconds (one pair is a row with a lower and upper value)
+    1 9; # stepped bands
+    2 10;
+    3 11;
+    4 12;
+    5 13;
+    6 14;
+    7 15;
+    8 16;
+    9 17;
+    10 18;
+    11 19;
+    12 20
+    ] 
 # outlier culling
-outliers = [0 97] # percentiles for culling
+outliers = [0 90] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -294,14 +310,35 @@ savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
 savefig(hp4,string(c_dataout,"lpz2bhz.pdf"))
 
 # intialize and save original newD
+bandctr = [] # seconds
+mdrntrend = [] # in percent
+mdrntrende = []
+mdrnmed = [] # in units
+mdrnmede = []
+histtrend = []
+histtrende = []
+histmed = []
+histmede = []
+comptrend = []
+comptrende = []
+compmed = []
+compmede = []
 Nbands = size(bands)[1]
 for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
-    global oldD = vec(mean(oldDall[oldfidx,:],dims=1))
+    global oldD = vec(sum(oldDall[oldfidx,:],dims=1))
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
-    global newD = vec(mean(newD0[newfidx,:],dims=1))
+    global newD = vec(sum(newD0[newfidx,:],dims=1))
+    # sqrt if need
+    if useroot
+        oldD = sqrt.(oldD)
+        newD = sqrt.(newD)
+        global unitstring = "m/s"
+    else
+        global unitstring = "(m/s)^2"
+    end
 
     ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
     if usejdayfilter
@@ -384,7 +421,7 @@ for i = 1:Nbands
     newTyear = Dates.value.(newTfilt)/(1000*60*60*24*365.2422)
     ogidx = findall(.!isnan.(oldDfilt))
     ngidx = findall(.!isnan.(newDfilt))
-    (olda, oldb) = linear_fit(oldTyear[ogidx],oldDfilt[ogidx]) # coefficient b will be in (m/s)^2/Hz / year
+    (olda, oldb) = linear_fit(oldTyear[ogidx],oldDfilt[ogidx]) 
     (newa, newb) = linear_fit(newTyear[ngidx],newDfilt[ngidx])
     (alla, allb) = linear_fit([oldTyear[ogidx]; newTyear[ngidx]],[oldDfilt[ogidx]; newDfilt[ngidx]])
     # get standard error of slope
@@ -397,7 +434,7 @@ for i = 1:Nbands
     newe = steslp(newTyear[ngidx],newDfilt[ngidx],newa,newb)
     alle = steslp([oldTyear[ogidx]; newTyear[ngidx]],[oldDfilt[ogidx]; newDfilt[ngidx]],alla,allb)
     # get median power based on 1988-2023 and normalize by it
-    med = median(filter(!isnan,newD))
+    med = median(filter(!isnan,newDfilt))
     # figure out energy % coefficients
     oldbp = oldb/med
     newbp = newb/med
@@ -406,37 +443,52 @@ for i = 1:Nbands
     newep = newe/med
     allep = alle/med
 
+    ## SAVE DATA
+    append!(bandctr,mean(bands[i,:])) # seconds
+    append!(mdrntrend,newbp) # in percent
+    append!(mdrntrende,newep)
+    append!(mdrnmed,median(filter(!isnan,newDfilt))) # in units
+    append!(mdrnmede,std(filter(!isnan,newDfilt)))
+    append!(histtrend,oldbp) # in percent
+    append!(histtrende,oldep)
+    append!(histmed,median(filter(!isnan,oldDfilt))) # in units
+    append!(histmede,std(filter(!isnan,oldDfilt)))
+    append!(comptrend,allbp) # in percent
+    append!(comptrende,allep)
+    append!(compmed,median(filter(!isnan,[oldDfilt; newDfilt]))) # in units
+    append!(compmede,std(filter(!isnan,[oldDfilt; newDfilt]))) 
+
     ## REPORT
     print(string("\n",bands[i,1],"-",bands[i,2],"s Band:\n"))
     print(string("  Historical Trend is: ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
-        " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)\n"))
+        " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)\n"))
     print(string("  Modern Trend is:     ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
-        " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)\n"))
+        " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)\n"))
     print(string("  Complete Trend is:   ",round(allb,sigdigits=2),"+/-",round(alle,sigdigits=2),
-        " (m/s)^2/Hz (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)\n"))
+        " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)\n"))
 
     ## PLOT ALL THE DATA
     # plot data
     hpc = plot([oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],
-        lc=:black,lw=1.5,ylabel="(m/s)^2/Hz",legend=:outerbottom,
+        lc=:black,lw=1.5,ylabel=unitstring,legend=:outerbottom,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     # plot old trend
     xtmp = range(oldTyear[1],newTyear[end],100)
     plot!(hpc,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
-        " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
+        " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
     # plot new trend
     plot!(hpc,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
-        " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
+        " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
     # plot both trend
     plot!(hpc,xtmp,alla.+allb.*xtmp,label=string("Comp. ",round(allb,sigdigits=2),"+/-",round(alle,sigdigits=2),
-        " (m/s)^2/Hz (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)"))
+        " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)"))
     # save
     savefig(hpc,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
 
     ## PLOT OLD DATA BY ITSELF
     hpd1 = plot([],[],
-        ylabel="(m/s)^2/Hz",legend=:outerbottom,label="",
+        ylabel=unitstring,legend=:outerbottom,label="",
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     if rollmedwind>Dates.Day(0)
         scatter!(hpd1,oldTyear,oldDfilt0,
@@ -446,10 +498,10 @@ for i = 1:Nbands
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(oldTyear[1],oldTyear[end],100)
     plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde,sigdigits=2),
-        " (m/s)^2/Hz (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
+        " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)"))
     ## PLOT NEW DATA BY ITSELF
     hpd2 = plot([],[],
-        ylabel="(m/s)^2/Hz",legend=:outerbottom,label="",
+        ylabel=unitstring,legend=:outerbottom,label="",
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     if rollmedwind>Dates.Day(0)
         scatter!(hpd2,newTyear,newDfilt0,
@@ -459,10 +511,22 @@ for i = 1:Nbands
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(newTyear[1],newTyear[end],100)
     plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
-        " (m/s)^2/Hz (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
+        " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
     ## COMBINE
     hpd = plot(hpd1,hpd2,layout=grid(1,2),size=(2000,800))
     savefig(hpd,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Split.pdf"))
 end
+
+## PRINT THE TREND AND POWER AGAINST BANDS
+hpe1 = plot(bandctr,histtrend,yerror=histtrende,label="Historical",
+    ylabel="% rel. to med.",xlabel="Period (s)",title="Trends")
+plot!(hpe1,bandctr,mdrntrend,yerror=mdrntrende,label="Modern")
+plot!(hpe1,bandctr,comptrend,yerror=comptrende,label="Complete")
+hpe2 = plot(bandctr,histmed,yerror=histmede,label="Historical",
+    ylabel=unitstring,xlabel="Period (s)",title="Medians")
+plot!(hpe2,bandctr,mdrnmed,yerror=mdrnmede,label="Modern")
+plot!(hpe2,bandctr,compmed,yerror=compmede,label="Complete")
+hpe = plot(hpe1,hpe2,layout=grid(1,2),size=(2000,800))
+savefig(hpe,string(c_dataout,"variance_with_bands.pdf"))
 
 print("\nDone!\n")
