@@ -43,12 +43,12 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "HRV_8823_NEW_TEST1"
+cRunName = "HRV_3640_NEW_TEST1"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
-spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
-#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
 spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld") # save file from initial readin
@@ -80,10 +80,10 @@ StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.
 #plot_f_range = [0.01,0.6]
 plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
-stime = Dates.DateTime(1988,1,1) # start time for spectra 
-etime = Dates.DateTime(2024,1,1) # end time for spectra 
-# stime = Dates.DateTime(1936,1,1) # start time for spectra 
-# etime = Dates.DateTime(1941,1,1) # end time for spectra 
+# stime = Dates.DateTime(1988,1,1) # start time for spectra 
+# etime = Dates.DateTime(2024,1,1) # end time for spectra 
+stime = Dates.DateTime(1936,1,1) # start time for spectra 
+etime = Dates.DateTime(1941,1,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
@@ -404,8 +404,8 @@ if !go_to_results
                                     meandiff = mean(abs.(spectF[stidx].-tmpvar["spectF"][ridx]))
                                     meanspectF = mean(diff(spectF[stidx]))
                                     meantmpvar = mean(diff(tmpvar["spectF"][ridx]))
-                                    # see if the differences are less than 10% of the step (i.e., close enough)
-                                    if (meandiff < meanspectF/10) & (meandiff < meantmpvar/10) 
+                                    # see if the differences are less than 11% of the step (i.e., close enough)
+                                    if (meandiff < meanspectF*.11) & (meandiff < meantmpvar*.11) 
                                         print(string("WARNING!! When adding ",jldfiles[i]," frequency mismatch of ",
                                             meandiff,"Hz was found. Proceeding with stitiching, that's close enough...\n"))
                                     else

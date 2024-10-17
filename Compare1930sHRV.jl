@@ -359,6 +359,8 @@ for i = 1:Nbands
         global unitstring = "(m/s)^2"
     end
 
+    ## REMOVE HARMONICS BASED ON MODERN
+
     ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
     if usejdayfilter
         oldjdays = Dates.dayofyear.(oldTall)
