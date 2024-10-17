@@ -43,15 +43,15 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "HRV_3640_NEW_TEST2"
+cRunName = "HRV_8823_NEW_TEST1"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
-#spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
-spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld") # save file from initial readin
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld") # save file from initial readin
 spect_save_as_mat = false
 station_gains_file = [] # use this empty to avoid correcting gains
 #station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
@@ -82,8 +82,8 @@ plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
 stime = Dates.DateTime(1988,1,1) # start time for spectra 
 etime = Dates.DateTime(2024,1,1) # end time for spectra 
-stime = Dates.DateTime(1936,1,1) # start time for spectra 
-etime = Dates.DateTime(1941,1,1) # end time for spectra 
+# stime = Dates.DateTime(1936,1,1) # start time for spectra 
+# etime = Dates.DateTime(1941,1,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
@@ -108,9 +108,12 @@ Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz pea
 # seismic culling and processing
 trimFimmediately = true # trim the spectF to plot_f_range (plot_f_range must not be empty) 
 padwith = NaN # NaN recommended!!!
-swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
+# swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
+# sstep = Dates.Minute(15) # window step
+# cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
 sstep = Dates.Minute(15) # window step
-cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 combineComps = false # turn on to combine data files (for legacy data)
 seasonal_avg_window = Dates.Day(120) # rolling average window for seasonal trend
 baro_smoothing_window = Dates.Day(120)
@@ -151,7 +154,7 @@ minmapbnds_x = [-90, -45]
 xlim_coef = 0.12 # limit to align scatter/line plots with heatmaps (having legend)
 makeDiagnosticPlots = true # plot fit diagnostics into Hidx directory
 superDiagnostics = true # plot each Vw2Vpcoast fit
-makeHurricanePlots = false # make initial hurricane maps
+makeHurricanePlots = true # make initial hurricane maps
 makeHurricaneAnimation = false # animate storm tracks one by one
 makeMERlocationPlots = false # make MER plots
 separateDots = true # make a separate scatter plot with predictions (for post proc.)
@@ -554,7 +557,7 @@ if !go_to_results
                         power_sort_idx = sortperm(tmppow)
                         # cull (consider average of N spectra with lowest power)
                         Nspect = convert(Int,ceil(length(tmppow)*cull_ratio))
-                        avgSpect = mean(spectD[i][:,tidx[power_sort_idx[1:Nspect]]],dims=2)
+                        avgSpect = median(spectD[i][:,tidx[power_sort_idx[1:Nspect]]],dims=2)
                         # save data
                         newD[:,j] = avgSpect
                     end

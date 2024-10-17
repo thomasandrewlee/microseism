@@ -41,12 +41,12 @@ using CurveFit
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med60_steps10_90/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med30_steps3_95/")
 # spectpaths
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
 # plotting
-decimation_factor = 5 # factor to decimate by for quick plots
+decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
 c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl_stack10/txfr.jld") 
 smoothing = 0.01 # smoothing window in Hz
@@ -63,50 +63,69 @@ goodmonths = []
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
-rollmedwind = Dates.Day(60) # set to zero for none
+rollmedwind = Dates.Day(30) # set to zero for none
 #rollmedwind = Dates.Day(0)
 maxNaNratio = 0.8 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
-bands = [ # seconds (one pair is a row with a lower and upper value)
-    6 13; #secondary
-    13 20; # primary
-    6 20; # all microseism
-    5 10; # reliable looking part of response
-    1 10; # peterson secondary peak
+# bands = [ # seconds (one pair is a row with a lower and upper value)
+#     6 13; #secondary
+#     13 20; # primary
+#     6 20; # all microseism
+#     5 10; # reliable looking part of response
+#     1 10; # peterson secondary peak
+#     ] 
+bands = [ # 3 second
+    1 4; # stepped bands
+    2 5;
+    3 6;
+    4 7;
+    5 8;
+    6 9;
+    7 10;
+    8 11;
+    9 12;
+    10 13;
+    11 14;
+    12 15;
+    13 16;
+    14 17;
+    15 18;
+    16 19;
+    17 20;
     ] 
-bands = [ # seconds (one pair is a row with a lower and upper value)
-    1 6; # stepped bands
-    2 7;
-    3 8;
-    4 9;
-    5 10;
-    6 11;
-    7 12;
-    8 13;
-    9 14;
-    10 15;
-    11 16;
-    12 17;
-    13 18;
-    14 19;
-    15 20;
-    ] 
-bands = [ # seconds (one pair is a row with a lower and upper value)
-    1 9; # stepped bands
-    2 10;
-    3 11;
-    4 12;
-    5 13;
-    6 14;
-    7 15;
-    8 16;
-    9 17;
-    10 18;
-    11 19;
-    12 20
-    ] 
+# bands = [ # 5 second
+#     1 6; # stepped bands
+#     2 7;
+#     3 8;
+#     4 9;
+#     5 10;
+#     6 11;
+#     7 12;
+#     8 13;
+#     9 14;
+#     10 15;
+#     11 16;
+#     12 17;
+#     13 18;
+#     14 19;
+#     15 20;
+#     ] 
+# bands = [ # 8 second
+#     1 9; # stepped bands
+#     2 10;
+#     3 11;
+#     4 12;
+#     5 13;
+#     6 14;
+#     7 15;
+#     8 16;
+#     9 17;
+#     10 18;
+#     11 19;
+#     12 20
+#     ] 
 # outlier culling
-outliers = [0 90] # percentiles for culling
+outliers = [0 95] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -328,9 +347,9 @@ for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
-    global oldD = vec(sum(oldDall[oldfidx,:],dims=1))
+    global oldD = vec(sum(oldDall[oldfidx,:],dims=1))./(length(oldfidx)*mean(diff(oldFall)))
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
-    global newD = vec(sum(newD0[newfidx,:],dims=1))
+    global newD = vec(sum(newD0[newfidx,:],dims=1))./(length(newfidx)*mean(diff(newF)))
     # sqrt if need
     if useroot
         oldD = sqrt.(oldD)
@@ -513,7 +532,7 @@ for i = 1:Nbands
     plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe,sigdigits=2),
         " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
     ## COMBINE
-    hpd = plot(hpd1,hpd2,layout=grid(1,2),size=(2000,800))
+    hpd = plot(hpd1,hpd2,layout=grid(1,2),size=(2000,800),left_margin=10mm,bottom_margin=10mm,)
     savefig(hpd,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Split.pdf"))
 end
 
@@ -526,7 +545,7 @@ hpe2 = plot(bandctr,histmed,yerror=histmede,label="Historical",
     ylabel=unitstring,xlabel="Period (s)",title="Medians")
 plot!(hpe2,bandctr,mdrnmed,yerror=mdrnmede,label="Modern")
 plot!(hpe2,bandctr,compmed,yerror=compmede,label="Complete")
-hpe = plot(hpe1,hpe2,layout=grid(1,2),size=(2000,800))
+hpe = plot(hpe1,hpe2,layout=grid(1,2),size=(2000,800),left_margin=10mm,bottom_margin=10mm,)
 savefig(hpe,string(c_dataout,"variance_with_bands.pdf"))
 
 print("\nDone!\n")
