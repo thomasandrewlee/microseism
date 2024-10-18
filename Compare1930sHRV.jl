@@ -34,10 +34,10 @@ using StatsBase
 using Dates
 using Interpolations
 using ProgressBars
-using Geodesics
 using NaNStatistics
 using Measures
 using CurveFit
+using RobustModels
 
 ## SETTINGS
 # output
