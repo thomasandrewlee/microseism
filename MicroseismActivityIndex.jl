@@ -51,7 +51,7 @@ spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_10prct_6hr_NEW.jld") # save file from initial readin
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_75prct_4hr_NEW.jld") # save file from initial readin
 spect_save_as_mat = false
 #station_gains_file = [] # use this empty to avoid correcting gains
 station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
@@ -111,9 +111,12 @@ padwith = NaN # NaN recommended!!!
 # swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
-swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
+# swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
+# sstep = Dates.Minute(15) # window step
+# cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+swind = Dates.Minute(240) # window in which to get representative spectra (set to 0 to skip culling)
 sstep = Dates.Minute(15) # window step
-cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+cull_ratio = 0.75 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 combineComps = false # turn on to combine data files (for legacy data)
 seasonal_avg_window = Dates.Day(120) # rolling average window for seasonal trend
 baro_smoothing_window = Dates.Day(120)
