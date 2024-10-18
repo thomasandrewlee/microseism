@@ -43,8 +43,10 @@ using CurveFit
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med30_steps3_95/")
 # spectpaths
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
-c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
+# c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
+# c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_10prct_6hr_NEW.jld")
+c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld")
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
@@ -360,6 +362,22 @@ for i = 1:Nbands
     end
 
     ## REMOVE HARMONICS BASED ON MODERN
+    # using FFTW, Plots
+    # N = 256;
+    # P = 1.0;
+    # Δt = P / N
+    # x = 0.0:Δt:(P-Δt)   # lenght(x) == N
+    # y = [sin(2π*7*t) + sin(2π*15*t) + sin(2π*30*t) for t in x] # mixture of simple wave signal
+    # plot(x, y, legend = false, linewidth=2)
+    # Fy = fft(y)[1:N÷2]
+    # ak =  2/N * real.(Fy)
+    # bk = -2/N * imag.(Fy)  # fft sign convention
+    # ak[1] = ak[1]/2
+    # yr = zeros(N,1)
+    # for i in 1:N÷2
+    #     yr .+= ak[i] * cos.(2π*(i-1)/P * x) .+ bk[i] * sin.(2π*(i-1)/P * x)
+    # end
+    # plot!(x, yr, linestyle=:dash, linewidth=2)
 
     ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
     if usejdayfilter
@@ -436,6 +454,23 @@ for i = 1:Nbands
         global newDfilt = lf.movingmedian(newDfilt,Nmedwind,maxNaNratio)
     end
     
+    ## IMPLEMENT THE ROBUST FIT FOR L1
+    # The prefered way of performing robust regression is by calling the rlm function:
+
+    # m = rlm(X, y, MEstimator{TukeyLoss}(); initial_scale=:mad)
+    
+    # For quantile regression, use quantreg:
+    
+    # m = quantreg(X, y; quantile=0.5)
+    
+    # For robust version of mean, std, var and sem statistics, specify the estimator as first argument. Use the dims keyword for computing the statistics along specific dimensions. The following functions are also implemented: mean_and_std, mean_and_var and mean_and_sem.
+    
+    # xm = mean(MEstimator{HuberLoss}(), x; dims=2)
+    
+    # (xm, sm) = mean_and_std(TauEstimator{YohaiZamarLoss}(), x)
+        
+        
+
     ## GET OUT THE TRENDS
     # do linear fit for old / new and primary / secondary
     oldTyear = Dates.value.(oldTfilt)/(1000*60*60*24*365.2422) # convert to years

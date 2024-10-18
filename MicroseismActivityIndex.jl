@@ -47,11 +47,11 @@ cRunName = "HRV_3640_NEW_TEST1"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
-#spect_jld = string(user_str,"Downloads/HRV_JLD_BHZ/") # spectrogram JLDs
-spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld") # save file from initial readin
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_10prct_6hr_NEW.jld") # save file from initial readin
 spect_save_as_mat = false
 station_gains_file = [] # use this empty to avoid correcting gains
 #station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
@@ -80,10 +80,10 @@ StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.
 #plot_f_range = [0.01,0.6]
 plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
-# stime = Dates.DateTime(1988,1,1) # start time for spectra 
-# etime = Dates.DateTime(2024,1,1) # end time for spectra 
-stime = Dates.DateTime(1936,1,1) # start time for spectra 
-etime = Dates.DateTime(1941,1,1) # end time for spectra 
+stime = Dates.DateTime(1988,1,1) # start time for spectra 
+etime = Dates.DateTime(2024,1,1) # end time for spectra 
+# stime = Dates.DateTime(1936,1,1) # start time for spectra 
+# etime = Dates.DateTime(1941,1,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
