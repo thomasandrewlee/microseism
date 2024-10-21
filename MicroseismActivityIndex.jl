@@ -711,9 +711,9 @@ if !go_to_results
         close(io)
     elseif seisreadmode == "adamcsv" 
         # read in PSD sums from adam for hurricane MILTONß
-        global names ="DWPF"
-        global slat = 28.11
-        global slon = -81.43
+        global names = ["DWPF"]
+        global slat = [28.11]
+        global slon = [-81.43]
         global spectD = []
         global spectT = []
         ln = open(spect_save_File) do f
@@ -721,13 +721,14 @@ if !go_to_results
         end
         for il = 1:lastindex(ln) # skip header line
             commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
-            ytmp = parse(Int,ln[1:commas[1]-1])
-            jtmp = parse(Int,ln[commas[1]+1:commas[2]-1])
-            htmp = parse(Int,ln[commas[2]+1:commas[3]-1])
-            mtmp = parse(Int,ln[commas[3]+1:commas[3]-1])ß
-            push!(spectT,Dates.Year(ytmp)+Dates.Day(jtmp)+Dates.Hour(htmp)+Dates.Minute(mtmp))
-            push!(spectD,parse(Float64,ln[il][commas[4]+1:commas[5]-1]))
+            ytmp = parse(Int64,ln[il][1:commas[1]-1])
+            jtmp = parse(Int64,ln[il][commas[1]+1:commas[2]-1])
+            htmp = parse(Int64,ln[il][commas[2]+1:commas[3]-1])
+            mtmp = parse(Int64,ln[il][commas[3]+1:commas[4]-1])
+            append!(spectT,Dates.DateTime(ytmp)+Dates.Day(jtmp)+Dates.Hour(htmp)+Dates.Minute(mtmp))
+            append!(spectD,parse(Float64,ln[il][commas[4]+1:commas[5]-1]))
         end 
+        spectD = [spectD]; spectT = [spectT];
         global spectF = 0.5 # placeholder -- doesn't actually matter
         global spectP0 = deepcopy(spectD)
     else
