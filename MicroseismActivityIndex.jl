@@ -126,6 +126,7 @@ sstep = Dates.Minute(15) # window step
 cull_ratio = 0.75 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 combineComps = false # turn on to combine data files (for legacy data)
 seasonal_avg_window = Dates.Day(120) # rolling average window for seasonal trend
+seasonal_avg_window = Dates.Day(0) # set to zero to not remove
 baro_smoothing_window = Dates.Day(120)
 time_lags = Dates.Minute.(-1*24*60:15:2*24*60) # time lag for correlating barometric data
 baro_corr_wndw_size = Dates.Hour(21*24) # must be even!
@@ -160,7 +161,7 @@ makeHeatmaps = true
 makeQuarterlyHeatmaps = true
 makeMaps = true
 minmapbnds_y = [20, 60] # map bound ranges
-minmapbnds_x = [-90, -45]
+minmapbnds_x = [-100, -45]
 xlim_coef = 0.12 # limit to align scatter/line plots with heatmaps (having legend)
 makeDiagnosticPlots = true # plot fit diagnostics into Hidx directory
 superDiagnostics = true # plot each Vw2Vpcoast fit
@@ -197,7 +198,7 @@ Nweight = 0.75 # weight down based on how many points are included
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
 Vwind2Vphase = 0.1:0.02:1.0
 #Vwind2Vphase = [1 ./(2.0:-0.01:1.01); 1.0:0.01:2.0]
-Vwind2Vphase = [1]
+#Vwind2Vphase = [1]
 Vwind2Vphase_fetchfile = string() # leave empty to run normal, otherwise put in fetch file
 function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
     # Vw2Vp_A = 0.3141  # 2b no hough
@@ -720,17 +721,20 @@ if !go_to_results
             readlines(f)
         end
         for il = 1:lastindex(ln) # skip header line
+            #print(string("il=",il,"\n"))
             commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
             ytmp = parse(Int64,ln[il][1:commas[1]-1])
             jtmp = parse(Int64,ln[il][commas[1]+1:commas[2]-1])
             htmp = parse(Int64,ln[il][commas[2]+1:commas[3]-1])
             mtmp = parse(Int64,ln[il][commas[3]+1:commas[4]-1])
-            append!(spectT,Dates.DateTime(ytmp)+Dates.Day(jtmp)+Dates.Hour(htmp)+Dates.Minute(mtmp))
+            push!(spectT,Dates.DateTime(ytmp)+Dates.Day(jtmp)+Dates.Hour(htmp)+Dates.Minute(mtmp))
             append!(spectD,parse(Float64,ln[il][commas[4]+1:commas[5]-1]))
         end 
         spectD = [spectD]; spectT = [spectT];
-        global spectF = 0.5 # placeholder -- doesn't actually matter
+        global spectF = [[0.5]] # placeholder -- doesn't actually matter
         global spectP0 = deepcopy(spectD)
+        # make spectD a matrix
+        spectD = [reshape(spectD[1].^10,1,length(spectD[1]))]
     else
         error("Value for parameter ''seisreadmode'' not recognized!")
     end
@@ -1079,30 +1083,38 @@ if !go_to_results
     if !isempty(baro_f_range)
         global spectPbaro1 = []
     end
-    # rolling average
-    for k = 1:lastindex(spectP0)
-        # convert window size from time to points
-        seasonal_avg_window_pts = round(Dates.value(convert(Dates.Millisecond,seasonal_avg_window)) / 
-            Dates.value(convert(Dates.Millisecond,mean(diff(spectT[k])))))
-        # compute rolling average
-        tmp_avg = movmean(spectP0[k],seasonal_avg_window_pts)
-        # get DC offset (we want to take this out of the seasonal trend)
-        tmp_DC = mean(filter(!isnan,tmp_avg))
-        # subtract trend 
-        tmp_subt = spectP0[k] .- tmp_avg .+ tmp_DC
-        # save values
-        push!(spectP_seasonal,tmp_avg)
-        push!(spectP_seasonal_DC,tmp_DC)
-        push!(spectP1,tmp_subt)
-        if !isempty(baro_f_range)
+    if seasonal_avg_window==Dates.Day(0)
+        spectP1 = deepcopy(spectP0)
+        for k = 1:lastindex(spectP0)
+            push!(spectP_seasonal,fill!(Vector{Float64}(undef,length(spectP1[k])),NaN))
+            push!(spectP_seasonal_DC,NaN)
+        end
+    else
+        # rolling average
+        for k = 1:lastindex(spectP0)
+            # convert window size from time to points
+            seasonal_avg_window_pts = round(Dates.value(convert(Dates.Millisecond,seasonal_avg_window)) / 
+                Dates.value(convert(Dates.Millisecond,mean(diff(spectT[k])))))
             # compute rolling average
-            tmp_avg = movmean(spectPbaro0[k],seasonal_avg_window_pts)
+            tmp_avg = movmean(spectP0[k],seasonal_avg_window_pts)
             # get DC offset (we want to take this out of the seasonal trend)
             tmp_DC = mean(filter(!isnan,tmp_avg))
             # subtract trend 
-            tmp_subt = spectPbaro0[k] .- tmp_avg .+ tmp_DC
+            tmp_subt = spectP0[k] .- tmp_avg .+ tmp_DC
             # save values
-            push!(spectPbaro1,tmp_subt)
+            push!(spectP_seasonal,tmp_avg)
+            push!(spectP_seasonal_DC,tmp_DC)
+            push!(spectP1,tmp_subt)
+            if !isempty(baro_f_range)
+                # compute rolling average
+                tmp_avg = movmean(spectPbaro0[k],seasonal_avg_window_pts)
+                # get DC offset (we want to take this out of the seasonal trend)
+                tmp_DC = mean(filter(!isnan,tmp_avg))
+                # subtract trend 
+                tmp_subt = spectPbaro0[k] .- tmp_avg .+ tmp_DC
+                # save values
+                push!(spectPbaro1,tmp_subt)
+            end
         end
     end
 
@@ -2529,11 +2541,14 @@ if !go_to_results
                             tcidx_cst = map(x->argmin(
                                 abs.(Dates.value.(spectT[k].-PRED_cst_time[k][j][ii,gidx_cst[x]]))),
                                 1:lastindex(gidx_cst))
-                            tcommon_cst = spectT[k][tcidx_cst]
+                            tgap_cst = map(x->abs.(Dates.value.(spectT[k].-PRED_cst_time[k][j][ii,gidx_cst[x]])),
+                                1:lastindex(gidx_cst))
+                            gidxtmp = findall(tgap_cst.<=1000*60*60*3) # 3 hours time limit
+                            tcommon_cst = spectT[k][tcidx_cst[gidxtmp]]
                             # get predicted data
-                            P_prd_cst = PRED_cst_ampl[k][j][gidx_cst]
+                            P_prd_cst = PRED_cst_ampl[k][j][gidx_cst[gidxtmp]]
                             # get observed data
-                            P_obs_cst = spectP2[k][tcidx_cst]
+                            P_obs_cst = spectP2[k][tcidx_cst[gidxtmp]]
                         end 
                         # calculate L2 difference 
                         if isa(P_obs_cst,Vector)
