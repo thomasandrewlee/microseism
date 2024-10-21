@@ -160,7 +160,7 @@ makeHidxPlots = true
 makeHeatmaps = true
 makeQuarterlyHeatmaps = true
 makeMaps = true
-minmapbnds_y = [20, 60] # map bound ranges
+minmapbnds_y = [10, 60] # map bound ranges
 minmapbnds_x = [-100, -45]
 xlim_coef = 0.12 # limit to align scatter/line plots with heatmaps (having legend)
 makeDiagnosticPlots = true # plot fit diagnostics into Hidx directory
@@ -196,7 +196,7 @@ Nweight = 0.75 # weight down based on how many points are included
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
-Vwind2Vphase = 0.1:0.02:1.0
+Vwind2Vphase = 0.02:0.002:0.2
 #Vwind2Vphase = [1 ./(2.0:-0.01:1.01); 1.0:0.01:2.0]
 #Vwind2Vphase = [1]
 Vwind2Vphase_fetchfile = string() # leave empty to run normal, otherwise put in fetch file
@@ -2541,7 +2541,7 @@ if !go_to_results
                             tcidx_cst = map(x->argmin(
                                 abs.(Dates.value.(spectT[k].-PRED_cst_time[k][j][ii,gidx_cst[x]]))),
                                 1:lastindex(gidx_cst))
-                            tgap_cst = map(x->abs.(Dates.value.(spectT[k].-PRED_cst_time[k][j][ii,gidx_cst[x]])),
+                            tgap_cst = map(x->minimum(abs.(Dates.value.(spectT[k].-PRED_cst_time[k][j][ii,gidx_cst[x]]))),
                                 1:lastindex(gidx_cst))
                             gidxtmp = findall(tgap_cst.<=1000*60*60*3) # 3 hours time limit
                             tcommon_cst = spectT[k][tcidx_cst[gidxtmp]]
@@ -2780,11 +2780,14 @@ if !go_to_results
                         tcidx_coarse = map(x->argmin(
                             abs.(Dates.value.(t_obs.-PRED_cst_time[k][j][ibest,gidx_cst[x]]))),
                             1:lastindex(gidx_cst))
+                        tgap_cst = map(x->minimum(abs.(Dates.value.(t_obs.-PRED_cst_time[k][j][ibest,gidx_cst[x]]))),
+                            1:lastindex(gidx_cst))
+                        gidxtmp = findall(tgap_cst.<=1000*60*60*3) 
                         # get observed data
-                        tcommon_coarse = t_obs[tcidx_coarse]
-                        P_obs_coarse = P_obs[tcidx_coarse]
+                        tcommon_coarse = t_obs[tcidx_coarse[gidxtmp]]
+                        P_obs_coarse = P_obs[tcidx_coarse[gidxtmp]]
                         # get predicted data (from P_obs with storm subtracted)
-                        P_prd_cst_coarse = PRED_cst_ampl[k][j][gidx_cst]
+                        P_prd_cst_coarse = PRED_cst_ampl[k][j][gidx_cst[gidxtmp]]
                     end
                     # make comparison
                     if !fitsmooth 
