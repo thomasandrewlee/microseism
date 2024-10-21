@@ -43,18 +43,22 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "HRV_3640_NEW_TEST1"
+cRunName = "MILTON_TEST"
 clearResults = false
 # data locations
-cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
-spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
-#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+#cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
+cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton.txt")
+#spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_75prct_4hr_NEW.jld") # save file from initial readin
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_75prct_4hr_NEW.jld") # save file from initial readin
+spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
 spect_save_as_mat = false
-#station_gains_file = [] # use this empty to avoid correcting gains
-station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
+#seisreadmode = "standard"
+seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
+station_gains_file = [] # use this empty to avoid correcting gains
+#station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
@@ -70,6 +74,7 @@ cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new1b_FINDFIT.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/DWPF_MILTON_1.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -80,10 +85,12 @@ StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.
 #plot_f_range = [0.01,0.6]
 plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
-stime = Dates.DateTime(1988,1,1) # start time for spectra 
-etime = Dates.DateTime(2024,1,1) # end time for spectra 
+# stime = Dates.DateTime(1988,1,1) # start time for spectra 
+# etime = Dates.DateTime(2024,1,1) # end time for spectra 
 # stime = Dates.DateTime(1936,1,1) # start time for spectra 
 # etime = Dates.DateTime(1941,1,1) # end time for spectra 
+stime = Dates.DateTime(2024,10,1) # start time for spectra 
+etime = Dates.DateTime(2024,11,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
@@ -266,441 +273,467 @@ if !go_to_results
         mkdir(cDataOut)
     end
 
-    ## READ IN SEISMIC
-    print(string("Writing read-in report to: ",cDataOut,"read_in.txt\n\n"))
-    io = open(string(cDataOut,"read_in.txt"),"w")
-    # read contents
-    jldfiles = readdir(spect_jld)
-    # discard non jld files
-    bidx = findall(length.(jldfiles).<4)
-    deleteat!(jldfiles,bidx) # remove files too short to check for end
-    bidx = findall(map(x -> uc.normalize(jldfiles[x][(end-3):end],casefold=true)!=".jld", 1:length(jldfiles)))
-    deleteat!(jldfiles,bidx) # remove non-jld files
-    if isfile(spect_save_File)
-        print(string("Loading raw spectral data from: ",spect_save_File,"\n"))
-        tmpvar = load(spect_save_File)
-        # check if file is good
-        if trimFimmediately == tmpvar["trimFimmediately"]
-            if plot_f_range == tmpvar["plot_f_range"]
-                if jldfiles == tmpvar["jldfiles"]
-                    if sum([
-                        wlen1 == tmpvar["wlen1"], 
-                        wovp1 == tmpvar["wovp1"], 
-                        wlen2 == tmpvar["wlen2"], 
-                        wovp2 == tmpvar["wovp2"], 
-                        Nthrow == tmpvar["Nthrow"], 
-                        ])==5
-                        if (swind == tmpvar["swind"])+(sstep == tmpvar["sstep"])==2
-                            global names = tmpvar["names"]
-                            global slat = tmpvar["slat"]
-                            global slon = tmpvar["slon"]
-                            global spectD = tmpvar["spectD"]
-                            global spectT = tmpvar["spectT"]
-                            global spectF = tmpvar["spectF"]
+    if seisreadmode=="Standard"
+        ## READ IN SEISMIC
+        print(string("Writing read-in report to: ",cDataOut,"read_in.txt\n\n"))
+        io = open(string(cDataOut,"read_in.txt"),"w")
+        # read contents
+        jldfiles = readdir(spect_jld)
+        # discard non jld files
+        bidx = findall(length.(jldfiles).<4)
+        deleteat!(jldfiles,bidx) # remove files too short to check for end
+        bidx = findall(map(x -> uc.normalize(jldfiles[x][(end-3):end],casefold=true)!=".jld", 1:length(jldfiles)))
+        deleteat!(jldfiles,bidx) # remove non-jld files
+        if isfile(spect_save_File)
+            print(string("Loading raw spectral data from: ",spect_save_File,"\n"))
+            tmpvar = load(spect_save_File)
+            # check if file is good
+            if trimFimmediately == tmpvar["trimFimmediately"]
+                if plot_f_range == tmpvar["plot_f_range"]
+                    if jldfiles == tmpvar["jldfiles"]
+                        if sum([
+                            wlen1 == tmpvar["wlen1"], 
+                            wovp1 == tmpvar["wovp1"], 
+                            wlen2 == tmpvar["wlen2"], 
+                            wovp2 == tmpvar["wovp2"], 
+                            Nthrow == tmpvar["Nthrow"], 
+                            ])==5
+                            if (swind == tmpvar["swind"])+(sstep == tmpvar["sstep"])==2
+                                global names = tmpvar["names"]
+                                global slat = tmpvar["slat"]
+                                global slon = tmpvar["slon"]
+                                global spectD = tmpvar["spectD"]
+                                global spectT = tmpvar["spectT"]
+                                global spectF = tmpvar["spectF"]
+                            else
+                                error(string("Either 'sstep' or 'swind' does not match for: ",spect_save_File,"\n"))
+                            end
                         else
-                            error(string("Either 'sstep' or 'swind' does not match for: ",spect_save_File,"\n"))
+                            error(string("At least one of the spectrogram jld variables does not match for: ",spect_save_File,"\n"))
                         end
                     else
-                        error(string("At least one of the spectrogram jld variables does not match for: ",spect_save_File,"\n"))
+                        error(string("Variable 'jldfiles' does not match for: ",spect_save_File,"\n"))
                     end
                 else
-                    error(string("Variable 'jldfiles' does not match for: ",spect_save_File,"\n"))
+                    error(string("Variable 'plot_f_range' does not match for: ",spect_save_File,"\n"))
                 end
             else
-                error(string("Variable 'plot_f_range' does not match for: ",spect_save_File,"\n"))
+                error(string("Variable 'trimFimmediately' does not match for: ",spect_save_File,"\n"))
             end
-        else
-            error(string("Variable 'trimFimmediately' does not match for: ",spect_save_File,"\n"))
-        end
-        tmpvar = []
-        # check if MAT should also be done
-        if spect_save_as_mat
-            for i = 1:lastindex(spectT)
-                if !isfile(string(spect_save_File[1:end-4],"_",i,".mat"))
-                    MAT.matwrite(string(spect_save_File[1:end-4],"_",i,".mat"),
-                        Dict(
-                            "name"=>names[i],
-                            "slat"=>slat[i],
-                            "slon"=>slon[i],
-                            "spectD"=>spectD[i],
-                            "spectF"=>spectF[i],
-                            "spectYYYY"=>Dates.year.(spectT[i]),
-                            "spectMM"=>Dates.month.(spectT[i]),
-                            "spectDD"=>Dates.day.(spectT[i]),
-                            "specthh"=>Dates.hour.(spectT[i]),
-                            "spectmm"=>Dates.minute.(spectT[i]),
-                            "spectss"=>Dates.second.(spectT[i]),
+            tmpvar = []
+            # check if MAT should also be done
+            if spect_save_as_mat
+                for i = 1:lastindex(spectT)
+                    if !isfile(string(spect_save_File[1:end-4],"_",i,".mat"))
+                        MAT.matwrite(string(spect_save_File[1:end-4],"_",i,".mat"),
+                            Dict(
+                                "name"=>names[i],
+                                "slat"=>slat[i],
+                                "slon"=>slon[i],
+                                "spectD"=>spectD[i],
+                                "spectF"=>spectF[i],
+                                "spectYYYY"=>Dates.year.(spectT[i]),
+                                "spectMM"=>Dates.month.(spectT[i]),
+                                "spectDD"=>Dates.day.(spectT[i]),
+                                "specthh"=>Dates.hour.(spectT[i]),
+                                "spectmm"=>Dates.minute.(spectT[i]),
+                                "spectss"=>Dates.second.(spectT[i]),
+                            )
                         )
-                    )
+                    end
                 end
             end
-        end
-    else # calculate the stitiching
-        # initialize variables
-        names = []
-        slat = []
-        slon = []
-        spectD = []
-        spectT = []
-        spectF = []
-        # loop over and read in
-        for i = 1:lastindex(jldfiles)
-            # check if file name is in list of files
-            if !isempty(StaLst)
-                prds = findall(map(x -> jldfiles[i][x]=='.', 1:length(jldfiles[i])))
-                global staNameTmp = jldfiles[i][1:(prds[4]-1)]
-            else
-                global staNameTmp = ""
-            end
-            if sum(cmp.(staNameTmp,StaLst).==0)==1 || isempty(StaLst)
-                print(string("Match found for ",jldfiles[i],"\n"))
-                local tmpvar = load(string(spect_jld,jldfiles[i]))
-                # check parameters match
-                Nmismatch = sum([
-                                wlen1 != tmpvar["wlen1"], 
-                                wovp1 != tmpvar["wovp1"], 
-                                wlen2 != tmpvar["wlen2"], 
-                                wovp2 != tmpvar["wovp2"], 
-                                Nthrow != tmpvar["Nthrow"], 
-                                ])
-                if Nmismatch != 0
-                    error(string("WARNING!!! ",Nmismatch," parameters from JLD do not match those requested.
-                                JLD parameters are:
-                                    wlen1 = ",tmpvar["wlen1"],"
-                                    wovp1 = ",tmpvar["wovp1"],"
-                                    wlen2 = ",tmpvar["wlen2"],"
-                                    wovp2 = ",tmpvar["wovp2"],"
-                                    Nthrow = ",tmpvar["Nthrow"],"
-                                Requested parameters are:
-                                    wlen1 = ",wlen1,"
-                                    wovp1 = ",wovp1,"
-                                    wlen2 = ",wlen2,"
-                                    wovp2 = ",wovp2,"
-                                    Nthrow = ",Nthrow,"
-                                Check on settings of MakeStationSpectrogramms!!!\n"))
+        else # calculate the stitiching
+            # initialize variables
+            names = []
+            slat = []
+            slon = []
+            spectD = []
+            spectT = []
+            spectF = []
+            # loop over and read in
+            for i = 1:lastindex(jldfiles)
+                # check if file name is in list of files
+                if !isempty(StaLst)
+                    prds = findall(map(x -> jldfiles[i][x]=='.', 1:length(jldfiles[i])))
+                    global staNameTmp = jldfiles[i][1:(prds[4]-1)]
                 else
-                    # check if date range is valid
-                    tmpTime = tmpvar["spectT"]
-                    local tidx = findall(stime .< tmpTime .< etime)
-                    if !isempty(tidx)
-                        print(string("Reading data from ",jldfiles[i],"\n"))
-                        if sum(cmp.(names,staNameTmp).==0)!=0 || sum(cmp.(names,tmpvar["names"]).==0)!=0 # check if the name already exists
-                            # get station index to add to
-                            if isempty(StaLst)
-                                stidx = findall(cmp.(names,tmpvar["names"]).==0)
-                            else
-                                stidx = findall(cmp.(names,staNameTmp).==0)
-                            end
-                            if length(stidx) != 1
-                                error("Either found too many or no station match where there should be one!\n")
-                            else
-                                stidx=stidx[1]
-                            end
-                            # trim if needed (to save mem)
-                            if trimFimmediately & !isempty(plot_f_range)
-                                global ridx = findall(plot_f_range[1] .<= tmpvar["spectF"] .<= plot_f_range[2])
-                            end
-                            # check if spectF is the same
-                            if spectF[stidx] != tmpvar["spectF"][ridx]
-                                if length(spectF[stidx])==length(tmpvar["spectF"][ridx])
-                                    # get means of the difference between the frequencies and the steps
-                                    meandiff = mean(abs.(spectF[stidx].-tmpvar["spectF"][ridx]))
-                                    meanspectF = mean(diff(spectF[stidx]))
-                                    meantmpvar = mean(diff(tmpvar["spectF"][ridx]))
-                                    # see if the differences are less than 11% of the step (i.e., close enough)
-                                    if (meandiff < meanspectF*.11) & (meandiff < meantmpvar*.11) 
-                                        print(string("WARNING!! When adding ",jldfiles[i]," frequency mismatch of ",
-                                            meandiff,"Hz was found. Proceeding with stitiching, that's close enough...\n"))
+                    global staNameTmp = ""
+                end
+                if sum(cmp.(staNameTmp,StaLst).==0)==1 || isempty(StaLst)
+                    print(string("Match found for ",jldfiles[i],"\n"))
+                    local tmpvar = load(string(spect_jld,jldfiles[i]))
+                    # check parameters match
+                    Nmismatch = sum([
+                                    wlen1 != tmpvar["wlen1"], 
+                                    wovp1 != tmpvar["wovp1"], 
+                                    wlen2 != tmpvar["wlen2"], 
+                                    wovp2 != tmpvar["wovp2"], 
+                                    Nthrow != tmpvar["Nthrow"], 
+                                    ])
+                    if Nmismatch != 0
+                        error(string("WARNING!!! ",Nmismatch," parameters from JLD do not match those requested.
+                                    JLD parameters are:
+                                        wlen1 = ",tmpvar["wlen1"],"
+                                        wovp1 = ",tmpvar["wovp1"],"
+                                        wlen2 = ",tmpvar["wlen2"],"
+                                        wovp2 = ",tmpvar["wovp2"],"
+                                        Nthrow = ",tmpvar["Nthrow"],"
+                                    Requested parameters are:
+                                        wlen1 = ",wlen1,"
+                                        wovp1 = ",wovp1,"
+                                        wlen2 = ",wlen2,"
+                                        wovp2 = ",wovp2,"
+                                        Nthrow = ",Nthrow,"
+                                    Check on settings of MakeStationSpectrogramms!!!\n"))
+                    else
+                        # check if date range is valid
+                        tmpTime = tmpvar["spectT"]
+                        local tidx = findall(stime .< tmpTime .< etime)
+                        if !isempty(tidx)
+                            print(string("Reading data from ",jldfiles[i],"\n"))
+                            if sum(cmp.(names,staNameTmp).==0)!=0 || sum(cmp.(names,tmpvar["names"]).==0)!=0 # check if the name already exists
+                                # get station index to add to
+                                if isempty(StaLst)
+                                    stidx = findall(cmp.(names,tmpvar["names"]).==0)
+                                else
+                                    stidx = findall(cmp.(names,staNameTmp).==0)
+                                end
+                                if length(stidx) != 1
+                                    error("Either found too many or no station match where there should be one!\n")
+                                else
+                                    stidx=stidx[1]
+                                end
+                                # trim if needed (to save mem)
+                                if trimFimmediately & !isempty(plot_f_range)
+                                    global ridx = findall(plot_f_range[1] .<= tmpvar["spectF"] .<= plot_f_range[2])
+                                end
+                                # check if spectF is the same
+                                if spectF[stidx] != tmpvar["spectF"][ridx]
+                                    if length(spectF[stidx])==length(tmpvar["spectF"][ridx])
+                                        # get means of the difference between the frequencies and the steps
+                                        meandiff = mean(abs.(spectF[stidx].-tmpvar["spectF"][ridx]))
+                                        meanspectF = mean(diff(spectF[stidx]))
+                                        meantmpvar = mean(diff(tmpvar["spectF"][ridx]))
+                                        # see if the differences are less than 11% of the step (i.e., close enough)
+                                        if (meandiff < meanspectF*.11) & (meandiff < meantmpvar*.11) 
+                                            print(string("WARNING!! When adding ",jldfiles[i]," frequency mismatch of ",
+                                                meandiff,"Hz was found. Proceeding with stitiching, that's close enough...\n"))
+                                        else
+                                            error(string("Spectrogram frequencies do not match when adding ",
+                                                jldfiles[i]," to station ",names[stidx],"!\n")) 
+                                        end
                                     else
                                         error(string("Spectrogram frequencies do not match when adding ",
-                                            jldfiles[i]," to station ",names[stidx],"!\n")) 
+                                                    jldfiles[i]," to station ",names[stidx],"!\n"))
+                                    end
+                                end
+                                if swind==Dates.Minute(0) # see if using spectra in time method -- in which case no interp needed
+                                    # grab the existing data and new 
+                                    oldAt = spectT[stidx]
+                                    oldAD = spectD[stidx]
+                                    oldBt = tmpvar["spectT"][tidx]
+                                    oldBD = tmpvar["spectD"][ridx,tidx]
+                                    if sum(isreal.(oldBD))<0.01*length(oldBD)
+                                        # go from fft (with imaginaries) to psd if needed
+                                        oldBD = (abs.(oldBD).^2) ./ 240000 # should this be 12000 to properly normalize??
+                                        # CHANGE ME!!!! This is normalized based on 20Hz and 10min window for HRV BHZ
+                                        # this gives 12000 points multiplied by a sample frequency of 20 Hz = 240000
+                                    end
+                                    if length(oldBt)>1 # don't allow single values
+                                        # get new timeseries span
+                                        mint = minimum([minimum(oldAt), minimum(oldBt)])
+                                        maxt = maximum([maximum(oldAt), maximum(oldBt)])
+                                        dt = Dates.Second((1-wovp1)*wlen1)
+                                        newt = mint:dt:maxt
+                                        # make empty data array
+                                        if isnan(padwith)
+                                            local newD = fill!(Array{Float32, 2}(undef, length(spectF[stidx]), length(newt)),NaN) 
+                                        elseif padwith == 0
+                                            local newD = convert.(Float32, zeros(length(spectF[stidx]), length(newt)))
+                                        else 
+                                            error(string("Unknown setting for padwith: ",padwith,"\n"))
+                                        end
+                                        # get time indices
+                                        newAtidx = findall(oldAt[1] .< newt .< oldAt[end]) # time indices of A array
+                                        newBtidx = findall(oldBt[1] .< newt .< oldBt[end]) # time indices of B array
+                                        # set raw millisecond data for interpolation
+                                        raw_oldAt = Dates.value.(oldAt-minimum(oldAt))# raw data for interpolating A and B
+                                        raw_oldBt = Dates.value.(oldBt-minimum(oldBt))
+                                        raw_newAt = Dates.value.(newt[newAtidx]-minimum(oldAt))
+                                        raw_newBt = Dates.value.(newt[newBtidx]-minimum(oldBt))
+                                        # interpolate and fill in
+                                        for ii = 1:length(spectF[stidx])
+                                            itpAD = LinearInterpolation(raw_oldAt, oldAD[ii,:])
+                                            itpBD = LinearInterpolation(raw_oldBt, oldBD[ii,:])
+                                            newD[ii,newAtidx] = itpAD(raw_newAt)
+                                            newD[ii,newBtidx] = itpBD(raw_newBt)
+                                        end
+                                        # stitch together
+                                        spectD[stidx] = newD
+                                        spectT[stidx] = newt
+                                    else
+                                        print("  Skipping due to length of 1....\n")
                                     end
                                 else
-                                    error(string("Spectrogram frequencies do not match when adding ",
-                                                jldfiles[i]," to station ",names[stidx],"!\n"))
-                                end
-                            end
-                            if swind==Dates.Minute(0) # see if using spectra in time method -- in which case no interp needed
-                                # grab the existing data and new 
-                                oldAt = spectT[stidx]
-                                oldAD = spectD[stidx]
-                                oldBt = tmpvar["spectT"][tidx]
-                                oldBD = tmpvar["spectD"][ridx,tidx]
-                                if sum(isreal.(oldBD))<0.01*length(oldBD)
-                                    # go from fft (with imaginaries) to psd if needed
-                                    oldBD = (abs.(oldBD).^2) ./ 240000 # should this be 12000 to properly normalize??
-                                    # CHANGE ME!!!! This is normalized based on 20Hz and 10min window for HRV BHZ
-                                    # this gives 12000 points multiplied by a sample frequency of 20 Hz = 240000
-                                end
-                                if length(oldBt)>1 # don't allow single values
-                                    # get new timeseries span
-                                    mint = minimum([minimum(oldAt), minimum(oldBt)])
-                                    maxt = maximum([maximum(oldAt), maximum(oldBt)])
-                                    dt = Dates.Second((1-wovp1)*wlen1)
-                                    newt = mint:dt:maxt
-                                    # make empty data array
-                                    if isnan(padwith)
-                                        local newD = fill!(Array{Float32, 2}(undef, length(spectF[stidx]), length(newt)),NaN) 
-                                    elseif padwith == 0
-                                        local newD = convert.(Float32, zeros(length(spectF[stidx]), length(newt)))
-                                    else 
-                                        error(string("Unknown setting for padwith: ",padwith,"\n"))
+                                    # append
+                                    tmpD = tmpvar["spectD"][ridx,tidx]
+                                    if sum(isreal.(tmpD))<0.01*length(tmpD)
+                                        # go from fft (with imaginaries) to psd if needed
+                                        tmpD = (abs.(tmpD).^2) ./ 240000
+                                        # see previous note about normalization
                                     end
-                                    # get time indices
-                                    newAtidx = findall(oldAt[1] .< newt .< oldAt[end]) # time indices of A array
-                                    newBtidx = findall(oldBt[1] .< newt .< oldBt[end]) # time indices of B array
-                                    # set raw millisecond data for interpolation
-                                    raw_oldAt = Dates.value.(oldAt-minimum(oldAt))# raw data for interpolating A and B
-                                    raw_oldBt = Dates.value.(oldBt-minimum(oldBt))
-                                    raw_newAt = Dates.value.(newt[newAtidx]-minimum(oldAt))
-                                    raw_newBt = Dates.value.(newt[newBtidx]-minimum(oldBt))
-                                    # interpolate and fill in
-                                    for ii = 1:length(spectF[stidx])
-                                        itpAD = LinearInterpolation(raw_oldAt, oldAD[ii,:])
-                                        itpBD = LinearInterpolation(raw_oldBt, oldBD[ii,:])
-                                        newD[ii,newAtidx] = itpAD(raw_newAt)
-                                        newD[ii,newBtidx] = itpBD(raw_newBt)
-                                    end
-                                    # stitch together
-                                    spectD[stidx] = newD
-                                    spectT[stidx] = newt
+                                    spectD[stidx] = hcat(spectD[stidx], tmpD)
+                                    append!(spectT[stidx], tmpvar["spectT"][tidx])
+                                end
+                            else # doesn't exist so start anew
+                                # trim if needed (to save mem)
+                                if trimFimmediately & !isempty(plot_f_range)
+                                    global ridx = findall(plot_f_range[1] .<= tmpvar["spectF"] .<= plot_f_range[2])
+                                end
+                                # append everything
+                                push!(spectF,tmpvar["spectF"][ridx])
+                                if isempty(StaLst)
+                                    push!(names, tmpvar["names"])
                                 else
-                                    print("  Skipping due to length of 1....\n")
+                                    push!(names, staNameTmp)
                                 end
-                            else
-                                # append
+                                push!(slat, tmpvar["slat"])
+                                push!(slon, tmpvar["slon"])
                                 tmpD = tmpvar["spectD"][ridx,tidx]
                                 if sum(isreal.(tmpD))<0.01*length(tmpD)
                                     # go from fft (with imaginaries) to psd if needed
-                                    tmpD = (abs.(tmpD).^2) ./ 240000
-                                    # see previous note about normalization
+                                    tmpD = (abs.(tmpD).^2)./240000
+                                    # see previous
                                 end
-                                spectD[stidx] = hcat(spectD[stidx], tmpD)
-                                append!(spectT[stidx], tmpvar["spectT"][tidx])
+                                push!(spectD, tmpD)
+                                push!(spectT, tmpvar["spectT"][tidx])
                             end
-                        else # doesn't exist so start anew
-                            # trim if needed (to save mem)
-                            if trimFimmediately & !isempty(plot_f_range)
-                                global ridx = findall(plot_f_range[1] .<= tmpvar["spectF"] .<= plot_f_range[2])
-                            end
-                            # append everything
-                            push!(spectF,tmpvar["spectF"][ridx])
-                            if isempty(StaLst)
-                                push!(names, tmpvar["names"])
-                            else
-                                push!(names, staNameTmp)
-                            end
-                            push!(slat, tmpvar["slat"])
-                            push!(slon, tmpvar["slon"])
-                            tmpD = tmpvar["spectD"][ridx,tidx]
-                            if sum(isreal.(tmpD))<0.01*length(tmpD)
-                                # go from fft (with imaginaries) to psd if needed
-                                tmpD = (abs.(tmpD).^2)./240000
-                                # see previous
-                            end
-                            push!(spectD, tmpD)
-                            push!(spectT, tmpvar["spectT"][tidx])
                         end
                     end
+                    tmpvar = [] # clear tmpvar
                 end
-                tmpvar = [] # clear tmpvar
             end
-        end
-        # correct gain (assuming flat response, not a bad one for VBB HRV)
-        if !isempty(station_gains_file)
-            spectG = map(x->fill!(Vector{Float64}(undef,length(spectT[x])),NaN),1:lastindex(spectT)) # initialize gain array
-            for i = 1:lastindex(spectD)
-                if names[i]=="HRV.BHZ" # currently only gains for HRV.BHZ were grabbed
-                    # read in the gain file
-                    ln = open(station_gains_file) do f
-                        readlines(f)
+            # correct gain (assuming flat response, not a bad one for VBB HRV)
+            if !isempty(station_gains_file)
+                spectG = map(x->fill!(Vector{Float64}(undef,length(spectT[x])),NaN),1:lastindex(spectT)) # initialize gain array
+                for i = 1:lastindex(spectD)
+                    if names[i]=="HRV.BHZ" # currently only gains for HRV.BHZ were grabbed
+                        # read in the gain file
+                        ln = open(station_gains_file) do f
+                            readlines(f)
+                        end
+                        stimetmp = [] # start of time periods
+                        etimetmp = [] # end of time periods
+                        gaintmp = [] # gain for that time period (counts / (m/s))
+                        for il = 3:lastindex(ln) # skip header line
+                            commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
+                            push!(stimetmp,Dates.DateTime(ln[il][1:commas[1]-1],Dates.dateformat"yyyy-mm-dd"))
+                            push!(etimetmp,Dates.DateTime(ln[il][commas[1]+1:commas[2]-1],Dates.dateformat"yyyy-mm-dd"))
+                            push!(gaintmp,parse(Float64,ln[il][commas[5]+1:commas[6]-1]))
+                        end 
+                        # loop over the periods and set gains
+                        for j = 1:lastindex(gaintmp)
+                            tidx = findall(stimetmp[j] .<= spectT[i] .<=etimetmp[j])
+                            if !isempty(tidx)
+                                spectG[i][tidx] .= gaintmp[j] 
+                            end
+                        end
+                        # divide by gain squared to get (m/s)^2 / Hz from counts^2 / Hz
+                        spectD[i] = spectD[i] ./ (spectG[i].^2)'
                     end
-                    stimetmp = [] # start of time periods
-                    etimetmp = [] # end of time periods
-                    gaintmp = [] # gain for that time period (counts / (m/s))
-                    for il = 3:lastindex(ln) # skip header line
-                        commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
-                        push!(stimetmp,Dates.DateTime(ln[il][1:commas[1]-1],Dates.dateformat"yyyy-mm-dd"))
-                        push!(etimetmp,Dates.DateTime(ln[il][commas[1]+1:commas[2]-1],Dates.dateformat"yyyy-mm-dd"))
-                        push!(gaintmp,parse(Float64,ln[il][commas[5]+1:commas[6]-1]))
-                    end 
-                    # loop over the periods and set gains
-                    for j = 1:lastindex(gaintmp)
-                        tidx = findall(stimetmp[j] .<= spectT[i] .<=etimetmp[j])
+                end
+            end
+            # now do the culling within swind windows
+            if swind!=Dates.Minute(0)
+                print("Culling data to get representative noise spectra for:\n")
+                for i=1:lastindex(spectT)
+                    print(string("  ",names[i],"\n"))
+                    # get window starts
+                    tmpwindstarts = minimum(spectT[i]):sstep:maximum(spectT[i])-swind
+                    newD = fill!(Array{Float32,2}(undef,(length(spectF[i]),length(tmpwindstarts))),NaN) # new spectras
+                    # loop over windows
+                    for j in ProgressBar(1:lastindex(tmpwindstarts))
+                        # get spectra in window
+                        local tidx = findall(tmpwindstarts[j] .<= spectT[i] .<= tmpwindstarts[j]+swind)
                         if !isempty(tidx)
-                            spectG[i][tidx] .= gaintmp[j] 
+                            if isempty(plot_f_range)
+                                global ridx = 1:lastindex(spectF[i])
+                            else
+                                global ridx = findall(plot_f_range[1] .<= spectF[i] .<= plot_f_range[2])
+                            end
+                            # calculate power of those spectra
+                            tmppow = map(x -> sum(spectD[i][ridx,tidx[x]]), 1:lastindex(tidx))
+                            # sort by power
+                            power_sort_idx = sortperm(tmppow)
+                            # cull (consider average of N spectra with lowest power)
+                            Nspect = convert(Int,ceil(length(tmppow)*cull_ratio))
+                            avgSpect = median(spectD[i][:,tidx[power_sort_idx[1:Nspect]]],dims=2)
+                            # save data
+                            newD[:,j] = avgSpect
                         end
                     end
-                    # divide by gain squared to get (m/s)^2 / Hz from counts^2 / Hz
-                    spectD[i] = spectD[i] ./ (spectG[i].^2)'
+                    # set
+                    spectT[i] = tmpwindstarts .+ (swind/2)
+                    spectD[i] = newD
                 end
             end
+            # SAVE DATA
+            save(spect_save_File,
+                "trimFimmediately",trimFimmediately,
+                "jldfiles",jldfiles,
+                "wlen1",wlen1,
+                "wovp1",wovp1, 
+                "wlen2",wlen2, 
+                "wovp2",wovp2, 
+                "Nthrow",Nthrow, 
+                "plot_f_range",plot_f_range,
+                "swind",swind,
+                "sstep",sstep,
+                "names",names,
+                "slat",slat,
+                "slon",slon,
+                "spectD",spectD,
+                "spectT",spectT,
+                "spectF",spectF,
+            )
         end
-        # now do the culling within swind windows
-        if swind!=Dates.Minute(0)
-            print("Culling data to get representative noise spectra for:\n")
-            for i=1:lastindex(spectT)
-                print(string("  ",names[i],"\n"))
-                # get window starts
-                tmpwindstarts = minimum(spectT[i]):sstep:maximum(spectT[i])-swind
-                newD = fill!(Array{Float32,2}(undef,(length(spectF[i]),length(tmpwindstarts))),NaN) # new spectras
-                # loop over windows
-                for j in ProgressBar(1:lastindex(tmpwindstarts))
-                    # get spectra in window
-                    local tidx = findall(tmpwindstarts[j] .<= spectT[i] .<= tmpwindstarts[j]+swind)
-                    if !isempty(tidx)
-                        if isempty(plot_f_range)
-                            global ridx = 1:lastindex(spectF[i])
-                        else
-                            global ridx = findall(plot_f_range[1] .<= spectF[i] .<= plot_f_range[2])
+
+        if combineComps
+            print("Stacking components\n")
+            avgSpect = []
+            # calculate average spectra for each component
+            for i = 1:lastindex(spectD)
+                gidx = findall(map(x->sum(isnan.(spectD[i][:,x]))==0,1:lastindex(spectT[i])))
+                avgtmp = mean(spectD[i][:,gidx],dims=2)
+                avgtmp = movmean(avgtmp,round(length(avgtmp)/20))
+                push!(avgSpect,avgtmp)
+            end
+            # calculate target spectra
+            targetspect = mean(avgSpect)
+            # calculate the weighting transfer function for each component
+            tFunc = []
+            for i = 1:lastindex(spectD)
+                transf_tmp = targetspect ./ avgSpect[i]
+                push!(tFunc,transf_tmp)
+            end
+            # get time that goes over all spectT
+            tstarttmp = minimum(map(x->minimum(spectT[x]),1:lastindex(spectT)))
+            tendtmp = maximum(map(x->maximum(spectT[x]),1:lastindex(spectT)))
+            spectTtmp = tstarttmp:sstep:tendtmp
+            # restack for for new reinterpolated spectT
+            spectDtmp = fill!(Array{Float32,2}(undef,(length(targetspect),length(spectTtmp))),NaN)
+            print("  Reweighting and stacking components...\n")
+            for i in ProgressBar(1:lastindex(spectTtmp))
+                modspect = []
+                for j = 1:lastindex(spectD)
+                    tidxtmp = findall(abs.(spectTtmp[i].-spectT[j]).<=sstep)
+                    if !isempty(tidxtmp) # if there is an entry within 15 min (sstep)
+                        if length(tidxtmp)>1
+                            tidxtmp = tidxtmp[argmin(abs.(spectTtmp[i].-spectT[j][tidxtmp]))]
                         end
-                        # calculate power of those spectra
-                        tmppow = map(x -> sum(spectD[i][ridx,tidx[x]]), 1:lastindex(tidx))
-                        # sort by power
-                        power_sort_idx = sortperm(tmppow)
-                        # cull (consider average of N spectra with lowest power)
-                        Nspect = convert(Int,ceil(length(tmppow)*cull_ratio))
-                        avgSpect = median(spectD[i][:,tidx[power_sort_idx[1:Nspect]]],dims=2)
-                        # save data
-                        newD[:,j] = avgSpect
+                        if sum(isnan.(spectD[j][:,tidxtmp]))==0 # if not NaN
+                            push!(modspect,tFunc[j].*spectD[j][:,tidxtmp])
+                        end
                     end
                 end
-                # set
-                spectT[i] = tmpwindstarts .+ (swind/2)
-                spectD[i] = newD
-            end
-        end
-        # SAVE DATA
-        save(spect_save_File,
-            "trimFimmediately",trimFimmediately,
-            "jldfiles",jldfiles,
-            "wlen1",wlen1,
-            "wovp1",wovp1, 
-            "wlen2",wlen2, 
-            "wovp2",wovp2, 
-            "Nthrow",Nthrow, 
-            "plot_f_range",plot_f_range,
-            "swind",swind,
-            "sstep",sstep,
-            "names",names,
-            "slat",slat,
-            "slon",slon,
-            "spectD",spectD,
-            "spectT",spectT,
-            "spectF",spectF,
-        )
-    end
-
-    if combineComps
-        print("Stacking components\n")
-        avgSpect = []
-        # calculate average spectra for each component
-        for i = 1:lastindex(spectD)
-            gidx = findall(map(x->sum(isnan.(spectD[i][:,x]))==0,1:lastindex(spectT[i])))
-            avgtmp = mean(spectD[i][:,gidx],dims=2)
-            avgtmp = movmean(avgtmp,round(length(avgtmp)/20))
-            push!(avgSpect,avgtmp)
-        end
-        # calculate target spectra
-        targetspect = mean(avgSpect)
-        # calculate the weighting transfer function for each component
-        tFunc = []
-        for i = 1:lastindex(spectD)
-            transf_tmp = targetspect ./ avgSpect[i]
-            push!(tFunc,transf_tmp)
-        end
-        # get time that goes over all spectT
-        tstarttmp = minimum(map(x->minimum(spectT[x]),1:lastindex(spectT)))
-        tendtmp = maximum(map(x->maximum(spectT[x]),1:lastindex(spectT)))
-        spectTtmp = tstarttmp:sstep:tendtmp
-        # restack for for new reinterpolated spectT
-        spectDtmp = fill!(Array{Float32,2}(undef,(length(targetspect),length(spectTtmp))),NaN)
-        print("  Reweighting and stacking components...\n")
-        for i in ProgressBar(1:lastindex(spectTtmp))
-            modspect = []
-            for j = 1:lastindex(spectD)
-                tidxtmp = findall(abs.(spectTtmp[i].-spectT[j]).<=sstep)
-                if !isempty(tidxtmp) # if there is an entry within 15 min (sstep)
-                    if length(tidxtmp)>1
-                        tidxtmp = tidxtmp[argmin(abs.(spectTtmp[i].-spectT[j][tidxtmp]))]
-                    end
-                    if sum(isnan.(spectD[j][:,tidxtmp]))==0 # if not NaN
-                        push!(modspect,tFunc[j].*spectD[j][:,tidxtmp])
-                    end
+                #print(string("i=",i,"\n"))
+                if !isempty(modspect)
+                    spectDtmp[:,i] = vec(mean(modspect))
                 end
             end
-            #print(string("i=",i,"\n"))
-            if !isempty(modspect)
-                spectDtmp[:,i] = vec(mean(modspect))
-            end
+            # make plots
+            hptrgtrsp = plot(spectF[1],avgSpect,labels=permutedims(names))
+            plot!(hptrgtrsp,spectF[1],targetspect,lc=:black,label="Target")
+            savefig(hptrgtrsp,string(cDataOut,"combined_target_resp.pdf"))
+            hptFunc = plot(spectF[1],tFunc,labels=permutedims(names),yaxis=:log)
+            savefig(hptFunc,string(cDataOut,"combination_transFunc.pdf"))
+            # make sure to modify spectP0, spectT, spectD, spectF, and names
+            global spectTall = spectT
+            global spectDall = spectD
+            global spectFall = spectF
+            global namesall = names
+            global spectT = [spectTtmp]
+            global spectD = [spectDtmp]
+            global spectF = [spectF[1]]
+            global names = ["stack"]
+            print("\n")
         end
-        # make plots
-        hptrgtrsp = plot(spectF[1],avgSpect,labels=permutedims(names))
-        plot!(hptrgtrsp,spectF[1],targetspect,lc=:black,label="Target")
-        savefig(hptrgtrsp,string(cDataOut,"combined_target_resp.pdf"))
-        hptFunc = plot(spectF[1],tFunc,labels=permutedims(names),yaxis=:log)
-        savefig(hptFunc,string(cDataOut,"combination_transFunc.pdf"))
-        # make sure to modify spectP0, spectT, spectD, spectF, and names
-        global spectTall = spectT
-        global spectDall = spectD
-        global spectFall = spectF
-        global namesall = names
-        global spectT = [spectTtmp]
-        global spectD = [spectDtmp]
-        global spectF = [spectF[1]]
-        global names = ["stack"]
-        print("\n")
-    end
 
-    # get the 1D power
-    spectP0 = []
-    if !isempty(baro_f_range)
-        spectPbaro0 = [] # frequency controlled 1D for baro comparison
-    end
-    for k = 1:lastindex(names)
-        # get ridx
-        if isempty(plot_f_range)
-            global ridx = 1:lastindex(spectF[k])
-        else
-            global ridx = findall(plot_f_range[1] .<= spectF[k] .<= plot_f_range[2])
+        # get the 1D power
+        spectP0 = []
+        if !isempty(baro_f_range)
+            spectPbaro0 = [] # frequency controlled 1D for baro comparison
         end
-        push!(spectP0,log10.(dropdims(sum(spectD[k][ridx,:],dims=1),dims=1)))
-        #push!(spectP0,dropdims(mean(spectD[k][ridx,:],dims=1),dims=1))
-        if !isempty(baro_f_range) # recalc ridx
-            ridx = findall(baro_f_range[1] .<= spectF[k] .<= baro_f_range[2])
-            push!(spectPbaro0,log10.(dropdims(sum(spectD[k][ridx,:],dims=1),dims=1)))
-        end  
-    end
-    print("\n")
-
-    # report read in success
-    print(string("\nSEISMIC READ IN SUMMARY:\n"))
-    print(io,string("\nSEISMIC READ IN SUMMARY:\n"))
-    for i = 1:lastindex(StaLst)
-        # check if in names
-        local stidx = findall(cmp.(names,StaLst[i]).==0)
-        if isempty(stidx)
-            print(string(StaLst[i],": NO DATA FOUND!!\n"))
-            print(io,string(StaLst[i],": NO DATA FOUND!!\n"))
-        else
-            stidx = stidx[1]
-            sttmp = minimum(spectT[stidx])
-            ettmp = maximum(spectT[stidx])
-            if isnan(padwith)
-                gapfrac = 100*(sum(isnan.(spectD[stidx]))/length(spectD[stidx]))
-            elseif padwith ==0
-                gapfrac = 100*(sum(iszero.(spectD[stidx]))/length(spectD[stidx]))
+        for k = 1:lastindex(names)
+            # get ridx
+            if isempty(plot_f_range)
+                global ridx = 1:lastindex(spectF[k])
             else
-                error("padwith is not zero or NaN!")
+                global ridx = findall(plot_f_range[1] .<= spectF[k] .<= plot_f_range[2])
             end
-            print(string(StaLst[i],": ",Dates.format(sttmp,"yyyy-mm-ddTHH:MM"),"->",
-                            Dates.format(ettmp,"yyyy-mm-ddTHH:MM"),", ",round(gapfrac; digits=2),"% gaps\n"))
-            print(io,string(StaLst[i],": ",Dates.format(sttmp,"yyyy-mm-ddTHH:MM"),"->",
-                            Dates.format(ettmp,"yyyy-mm-ddTHH:MM"),", ",round(gapfrac; digits=2),"% gaps\n"))
+            push!(spectP0,log10.(dropdims(sum(spectD[k][ridx,:],dims=1),dims=1)))
+            #push!(spectP0,dropdims(mean(spectD[k][ridx,:],dims=1),dims=1))
+            if !isempty(baro_f_range) # recalc ridx
+                ridx = findall(baro_f_range[1] .<= spectF[k] .<= baro_f_range[2])
+                push!(spectPbaro0,log10.(dropdims(sum(spectD[k][ridx,:],dims=1),dims=1)))
+            end  
         end
+        print("\n")
+
+        # report read in success
+        print(string("\nSEISMIC READ IN SUMMARY:\n"))
+        print(io,string("\nSEISMIC READ IN SUMMARY:\n"))
+        for i = 1:lastindex(StaLst)
+            # check if in names
+            local stidx = findall(cmp.(names,StaLst[i]).==0)
+            if isempty(stidx)
+                print(string(StaLst[i],": NO DATA FOUND!!\n"))
+                print(io,string(StaLst[i],": NO DATA FOUND!!\n"))
+            else
+                stidx = stidx[1]
+                sttmp = minimum(spectT[stidx])
+                ettmp = maximum(spectT[stidx])
+                if isnan(padwith)
+                    gapfrac = 100*(sum(isnan.(spectD[stidx]))/length(spectD[stidx]))
+                elseif padwith ==0
+                    gapfrac = 100*(sum(iszero.(spectD[stidx]))/length(spectD[stidx]))
+                else
+                    error("padwith is not zero or NaN!")
+                end
+                print(string(StaLst[i],": ",Dates.format(sttmp,"yyyy-mm-ddTHH:MM"),"->",
+                                Dates.format(ettmp,"yyyy-mm-ddTHH:MM"),", ",round(gapfrac; digits=2),"% gaps\n"))
+                print(io,string(StaLst[i],": ",Dates.format(sttmp,"yyyy-mm-ddTHH:MM"),"->",
+                                Dates.format(ettmp,"yyyy-mm-ddTHH:MM"),", ",round(gapfrac; digits=2),"% gaps\n"))
+            end
+        end
+        print("\n")
+        close(io)
+    elseif seisreadmode == "adamcsv" 
+        # read in PSD sums from adam for hurricane MILTONß
+        global names ="DWPF"
+        global slat = 28.11
+        global slon = -81.43
+        global spectD = []
+        global spectT = []
+        ln = open(spect_save_File) do f
+            readlines(f)
+        end
+        for il = 1:lastindex(ln) # skip header line
+            commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
+            ytmp = parse(Int,ln[1:commas[1]-1])
+            jtmp = parse(Int,ln[commas[1]+1:commas[2]-1])
+            htmp = parse(Int,ln[commas[2]+1:commas[3]-1])
+            mtmp = parse(Int,ln[commas[3]+1:commas[3]-1])ß
+            push!(spectT,Dates.Year(ytmp)+Dates.Day(jtmp)+Dates.Hour(htmp)+Dates.Minute(mtmp))
+            push!(spectD,parse(Float64,ln[il][commas[4]+1:commas[5]-1]))
+        end 
+        global spectF = 0.5 # placeholder -- doesn't actually matter
+        global spectP0 = deepcopy(spectD)
+    else
+        error("Value for parameter ''seisreadmode'' not recognized!")
     end
-    print("\n")
-    close(io)
+
 
     ## READ IN GEBCO DATA
     # read in
