@@ -66,7 +66,7 @@ filtercomp = 0.2 # ratio of data to total size needed
 goodmonths = []
 # harmonics (seasonal)
 removeharmonics = true
-Ncoefficients = 1 # how many overtones? (1 is fundamental only)
+Ncoefficients = 4 # how many overtones? (1 is fundamental only)
 t0 = 1 # in years
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
@@ -538,7 +538,7 @@ for i = 1:Nbands
         coefs = coef(fobj)
         stde = stderror(fobj)
         cint = confint(fobj) # 95%
-        return coefs[1], coefs[2], stde[2], cint[2,:]
+        return coefs[2], coefs[1], stde[1], cint[1,:]
     end
 
     ## GET OUT THE TRENDS
@@ -657,14 +657,14 @@ for i = 1:Nbands
 end
 
 ## PRINT THE TREND AND POWER AGAINST BANDS
-hpe1 = plot(bandctr,histtrend,yerror=histtrende,label="Historical",
+hpe1 = plot(bandctr,histtrend,yerror=histtrende*1.96,label="Historical",
     ylabel="% rel. to med.",xlabel="Period (s)",title="Trends")
-plot!(hpe1,bandctr,mdrntrend,yerror=mdrntrende,label="Modern")
-plot!(hpe1,bandctr,comptrend,yerror=comptrende,label="Complete")
-hpe2 = plot(bandctr,histmed,yerror=histmede,label="Historical",
+plot!(hpe1,bandctr,mdrntrend,yerror=mdrntrende*1.96,label="Modern")
+plot!(hpe1,bandctr,comptrend,yerror=comptrende*1.96,label="Complete")
+hpe2 = plot(bandctr,histmed,yerror=histmede*1.96,label="Historical",
     ylabel=unitstring,xlabel="Period (s)",title="Medians")
-plot!(hpe2,bandctr,mdrnmed,yerror=mdrnmede,label="Modern")
-plot!(hpe2,bandctr,compmed,yerror=compmede,label="Complete")
+plot!(hpe2,bandctr,mdrnmed,yerror=mdrnmede*1.96,label="Modern")
+plot!(hpe2,bandctr,compmed,yerror=compmede*1.96,label="Complete")
 hpe = plot(hpe1,hpe2,layout=grid(1,2),size=(2000,800),left_margin=10mm,bottom_margin=10mm,)
 savefig(hpe,string(c_dataout,"variance_with_bands.pdf"))
 
