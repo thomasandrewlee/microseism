@@ -62,6 +62,10 @@ filtercomp = 0.2 # ratio of data to total size needed
 #goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
 #goodmonths = [Dates.May Dates.June Dates.July] # leave empty to use all
 goodmonths = []
+# harmonics (seasonal)
+removeharmonics = true
+Ncoefficients = 1 # how many overtones? (1 is fundamental only)
+t0 = 1 # in years
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
@@ -166,18 +170,30 @@ end
 
 ## GET TXFR FROM EACH OF SPX and LPX to LPZ
 print("Calculating analog component to components transfer functions...\n")
-# get target spectra from HRV.LPZ
+# get target spectra frequencies from HRV.LPZ
 iLPZ = findall(oldnames.=="HRV.LPZ")[1]
 LPZspectF = oldF[iLPZ]
-LPZspect = map(x->mean(filter(!isnan,oldD[iLPZ][x,:])),
-    1:lastindex(LPZspectF))
+# get days since julian epoch with data for LPZ
+gidx = findall(.!isnan.(vec(sum(oldD[iLPZ],dims=1))))
+LPZdays = convert.(Int,floor.(Dates.datetime2julian.(oldT[iLPZ])))
+LPZudays = unique(LPZdays[gidx])
 # setup all the transfer functions
 oldTxfr = [] # transfer from each to LPZ
 oldSpects = [] # average spectras
 doInterp = [] # is interpolation needed for this trace?
 for i = 1:lastindex(oldT)
+    # get matching datapoints
+    gidx = findall(.!isnan.(vec(sum(oldD[i],dims=1))))
+    tmpdays = convert.(Int,floor.(Dates.datetime2julian.(oldT[i])))
+    tmpudays = unique(tmpdays[gidx])
+    mdays = intersect(tmpudays,LPZudays) # matching days
+    # get LPZ spectra for matching days
+    midx = findall(map(x->sum(LPZdays[x].==mdays)>0,1:lastindex(LPZdays)))
+    LPZspect = map(x->median(filter(!isnan,oldD[iLPZ][x,midx])),
+    1:lastindex(LPZspectF))
     # average the spectra for this channel
-    avgspect =  map(x->mean(filter(!isnan,oldD[i][x,:])),
+    midx = findall(map(x->sum(tmpdays[x].==mdays)>0,1:lastindex(tmpdays)))
+    avgspect =  map(x->median(filter(!isnan,oldD[i][x,midx])),
         1:lastindex(oldF[i]))
     # interpolate if need
     if length(LPZspectF)==length(oldF[i])
@@ -330,7 +346,7 @@ hpb = plot(hp3,hp5,hp8,hp6,hp7,hp9,layout=grid(2,3),size=(1600,800),
 savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
 savefig(hp4,string(c_dataout,"lpz2bhz.pdf"))
 
-# intialize and save original newD
+# intialize 
 bandctr = [] # seconds
 mdrntrend = [] # in percent
 mdrntrende = []
@@ -347,6 +363,7 @@ compmede = []
 Nbands = size(bands)[1]
 for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
+    # consider summing using trapezoidal sum
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
     global oldD = vec(sum(oldDall[oldfidx,:],dims=1))./(length(oldfidx)*mean(diff(oldFall)))
@@ -362,22 +379,72 @@ for i = 1:Nbands
     end
 
     ## REMOVE HARMONICS BASED ON MODERN
-    # using FFTW, Plots
-    # N = 256;
-    # P = 1.0;
-    # Δt = P / N
-    # x = 0.0:Δt:(P-Δt)   # lenght(x) == N
-    # y = [sin(2π*7*t) + sin(2π*15*t) + sin(2π*30*t) for t in x] # mixture of simple wave signal
-    # plot(x, y, legend = false, linewidth=2)
-    # Fy = fft(y)[1:N÷2]
-    # ak =  2/N * real.(Fy)
-    # bk = -2/N * imag.(Fy)  # fft sign convention
-    # ak[1] = ak[1]/2
-    # yr = zeros(N,1)
-    # for i in 1:N÷2
-    #     yr .+= ak[i] * cos.(2π*(i-1)/P * x) .+ bk[i] * sin.(2π*(i-1)/P * x)
-    # end
-    # plot!(x, yr, linestyle=:dash, linewidth=2)
+    if removeharmonics
+        # replace NaN with mean mean values
+        tmpD = deepcopy(newD)
+        tmpD[findall(isnan.(tmpD))].=mean(filter(!isnan,tmpD))
+        # get time in years
+        tyear = Dates.value.(newT)/(1000*60*60*24*365.2422)
+        # find next even number and add a zero if need be
+        if isodd(length(tmpD))
+            tmpD = [tmpD; mean(tmpD)]
+            tyear = [tyear; tyear[end]+mode(diff(tyear))]
+        end
+        # get fft
+        fftD = fft(tmpD)[1:convert(Int,(length(tmpD)/2))]
+        # get frequencies in cycles/year
+        fftf = fftfreq(length(tmpD),1/mode(diff(tyear)))[1:convert(Int,(length(tmpD)/2))]
+        # get coefficients
+        ak =  2/length(tmpD) * real.(fftD)
+        bk = -2/length(tmpD) * imag.(fftD)  # fft sign convention
+        ak[1] = ak[1]/2
+        harmonicD = zeros(length(tmpD))
+        # get harmonics
+        harmonicf = 1:1:Ncoefficients
+        fidx = map(x->argmin(abs.(fftf.-harmonicf[x])),1:lastindex(harmonicf)) # get harmonic frequency positions
+        ltime = tyear[end]-tyear[1]
+        for j = 1:lastindex(fidx)
+            harmonicD .+= ak[fidx[j]] * cos.(2π*(fidx[j]-1)/ltime * tyear)
+                 .+ bk[fidx[j]] * sin.(2π*(fidx[j]-1)/ltime * tyear)
+        end
+        # plot
+        hpf1 = plot(fftf[2:end],real.(fftD[2:end]).^2,xlim=(0,5),label="",
+            xlabel="cycles/year",ylabel="PSD",title="Harmonics")
+        pidx = 1:decimation_factor:lastindex(newT)
+        hpf2 = scatter(tyear[pidx],newD[pidx],ms=1,mc=:black,
+            title="Harmonics Fit",label="",ylabel=unitstring,
+            ylim=(0,percentile(filter(!isnan,newD),98)))
+        plot!(hpf2,tyear[pidx],harmonicD[pidx].+median(filter(!isnan,newD[pidx])),
+            lw=2,label=string(Ncoefficients,"-harmonic fit"))
+        hpf3 = scatter(tyear[pidx],newD[pidx].-harmonicD[pidx],
+            ms=1,mc=:black,title="Harmonics Removed",label="",ylabel=unitstring,
+            ylim=(0,percentile(filter(!isnan,newD),98)))
+        hpf = plot(hpf1,hpf2,hpf3,layout=grid(3,1),size=(1000,1000))
+        savefig(hpf,string(c_dataout,"harmonics.pdf"))
+        # plot old stuff
+        oldtyear = Dates.value.(oldTall)/(1000*60*60*24*365.2422)
+        harmonicDold = zeros(length(oldD))
+        for j = 1:lastindex(fidx)
+            harmonicDold .+= ak[fidx[j]] * cos.(2π*(fidx[j]-1)/ltime * oldtyear) 
+                .+ bk[fidx[j]] * sin.(2π*(fidx[j]-1)/ltime * oldtyear)
+        end
+        pidx = 1:decimation_factor:lastindex(oldTall)
+        hpg1 = scatter(oldtyear[pidx],oldD[pidx],ms=1,mc=:black,
+            title="Harmonics Fit",label="",ylabel=unitstring,
+            ylim=(0,percentile(filter(!isnan,newD),98)))
+        plot!(hpg1,oldtyear[pidx],harmonicDold[pidx].+median(filter(!isnan,newD[pidx])),
+            lw=2,label=string(Ncoefficients,"-harmonic fit"))
+        hpg2 = scatter(oldtyear[pidx],oldD[pidx].-harmonicDold[pidx],
+            ms=1,mc=:black,title="Harmonics Removed",label="",ylabel=unitstring,
+            ylim=(0,percentile(filter(!isnan,newD),98)))
+        hpg = plot(hpg1,hpg2,layout=grid(2,1),size=(1000,600))
+        savefig(hpg,string(c_dataout,"oldharmonics.pdf"))
+        # save original and subtract
+        newD1 = deepcopy(newD)
+        oldD1 = deepcopy(oldD)
+        newD = newD .- harmonicD[1:lastindex(newD)]
+        oldD = oldD .- harmonicDold
+    end
 
     ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
     if usejdayfilter
@@ -444,7 +511,7 @@ for i = 1:Nbands
     oldDfilt[oldidx] = oldD[oldidx]
     newDfilt[newidx] = newD[newidx]
 
-    ## GET THE ROLLING MEDIA
+    ## GET THE ROLLING MEDIAN
     if rollmedwind>Dates.Day(0)
         oldDfilt0 = deepcopy(oldDfilt)
         Nmedwind = convert(Int,round(rollmedwind/mode(diff(oldTfilt))))
@@ -455,21 +522,14 @@ for i = 1:Nbands
     end
     
     ## IMPLEMENT THE ROBUST FIT FOR L1
-    # The prefered way of performing robust regression is by calling the rlm function:
-
-    # m = rlm(X, y, MEstimator{TukeyLoss}(); initial_scale=:mad)
-    
-    # For quantile regression, use quantreg:
-    
-    # m = quantreg(X, y; quantile=0.5)
-    
-    # For robust version of mean, std, var and sem statistics, specify the estimator as first argument. Use the dims keyword for computing the statistics along specific dimensions. The following functions are also implemented: mean_and_std, mean_and_var and mean_and_sem.
-    
-    # xm = mean(MEstimator{HuberLoss}(), x; dims=2)
-    
-    # (xm, sm) = mean_and_std(TauEstimator{YohaiZamarLoss}(), x)
-        
-        
+    X = [reshape(oldTyear[ogidx],length(ogidx),1) ones(length(ogidx))]
+    y = oldDfilt[ogidx]
+    fobj = rlm(X,y,MEstimator{L2Loss}()) # L2
+    fobj =rlm(X,y,MEstimator{TukeyLoss}()) # robust fit
+    fobj = quantreg(X,y;quantile=0.5) # L1 (least absolute deviations)
+    coef(fobj)
+    stderror(fobj)
+    confint(fobj) # 95%
 
     ## GET OUT THE TRENDS
     # do linear fit for old / new and primary / secondary
