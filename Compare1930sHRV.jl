@@ -41,7 +41,7 @@ using RobustModels
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med30_steps3_95/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med60_steps3_95/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -68,13 +68,14 @@ goodmonths = []
 removeharmonics = true
 Ncoefficients = 4 # how many overtones? (1 is fundamental only)
 t0 = 1 # in years
+harmonicsmedianwindow = 1/52 # in years
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
 rollmedwind = Dates.Day(30) # set to zero for none
 #rollmedwind = Dates.Day(0)
 trendmode = "quantile" # valid modes are "quantile" "l2" and "tukey"
-maxNaNratio = 0.8 # maximum ratio of NaN to data in rolling median
+maxNaNratio = 0.75 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 # bands = [ # seconds (one pair is a row with a lower and upper value)
 #     6 13; #secondary
@@ -383,11 +384,15 @@ for i = 1:Nbands
 
     ## REMOVE HARMONICS BASED ON MODERN
     if removeharmonics
-        # replace NaN with mean mean values
-        tmpD = deepcopy(newD)
-        tmpD[findall(isnan.(tmpD))].=mean(filter(!isnan,tmpD))
         # get time in years
         tyear = Dates.value.(newT)/(1000*60*60*24*365.2422)
+        # replace NaN with mean mean values
+        tmpD = deepcopy(newD)
+        if harmonicsmedianwindow>0
+            Npts = convert(Int,round(harmonicsmedianwindow/mode(diff(tyear))))
+            tmpD = lf.movingmedian(tmpD,Npts,0.2)
+        end
+        tmpD[findall(isnan.(tmpD))].=mean(filter(!isnan,tmpD))
         # find next even number and add a zero if need be
         if isodd(length(tmpD))
             tmpD = [tmpD; mean(tmpD)]
