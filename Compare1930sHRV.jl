@@ -373,9 +373,11 @@ for i = 1:Nbands
     # consider summing using trapezoidal sum
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
-    global oldD = vec(sum(oldDall[oldfidx,:],dims=1))./(length(oldfidx)*mean(diff(oldFall)))
+    # global oldD = vec(sum(oldDall[oldfidx,:],dims=1))./(length(oldfidx)*mean(diff(oldFall)))
+    global oldD = map(x->lf.trapsum(oldFall[oldfidx],vec(oldDall[oldfidx,x])),1:lastindex(oldTall))
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
-    global newD = vec(sum(newD0[newfidx,:],dims=1))./(length(newfidx)*mean(diff(newF)))
+    #global newD = vec(sum(newD0[newfidx,:],dims=1))./(length(newfidx)*mean(diff(newF)))
+    global newD = map(x->lf.trapsum(newF[newfidx],vec(newD0[newfidx,x])),1:lastindex(newT))
     # sqrt if need
     if useroot
         oldD = sqrt.(oldD)
