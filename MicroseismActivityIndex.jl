@@ -174,7 +174,7 @@ noYscalefreq = true # don't fix the yscale for the Hidx plots
 # fitting parameters
 fitsmooth = false # use interpolation instead of single points to fit for storm dependent
 smoothlgth = 48 # number of 15 minute steps (or whatever step size) to smooth over
-sum_width = 0 # width of summing windows in hours (not date type, 0 to turn off)
+sum_width = 3 # width of summing windows in hours (not date type, 0 to turn off)
 t_travel_cutoff = Dates.Day(21) # cutoff for t_travel
 removeStorm = false # remove storm part of the signal
 weightingAmp = 0.0 # how much range of weighting is asigned to amplitude (0 means no weighting)
@@ -188,12 +188,11 @@ ampparamfit = true # use parameter grid search (hough transform) to fit amplitud
 # for hough transform parameters:
 angles = 0:0.1:180
 Nrbins = 250
-# linewidth = 0.5
-linewidth = 0.25
+linewidth = 0.5
 N_trends = 1
 #distweight = 0.25 # weight down based on average distance from the line
 #Nweight = 0.75 # weight down based on how many points are included
-distweight = 0
+distweight = 0.1
 Nweight = 0
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
@@ -2569,7 +2568,7 @@ if !go_to_results
                                     P_prd_cst_old = deepcopy(P_prd_cst)
                                     # define new versions
                                     tcommon_cst = sumwndws[2:end].-Dates.Minute(sum_width*60/2)
-                                    P_obs_cst = fill!(Vector{Float64}(undef,length(tcommon_cst)),NaN)
+                                    P_obs_cst = fill!(Vector{Float64}(undef,length(tcommon_cst)),NaN) # take mean of observations
                                     P_prd_cst = deepcopy(P_obs_cst)
                                     # sum in windows
                                     for i = 2:lastindex(sumwndws)
@@ -2578,7 +2577,7 @@ if !go_to_results
                                         if !isempty(gidx)
                                             gidx2 = findall(!isnan,P_obs_cst_old[gidx])
                                             if !isempty(gidx2)
-                                                P_obs_cst[i-1] = sum(P_obs_cst_old[gidx[gidx2]])
+                                                P_obs_cst[i-1] = mean(P_obs_cst_old[gidx[gidx2]]) # observations should not be integrated
                                             end
                                             gidx2 = findall(!isnan,P_prd_cst_old[gidx])
                                             if !isempty(gidx2)
@@ -2689,14 +2688,79 @@ if !go_to_results
                         tcidx = findall(min_t .<= spectT[k] .<= max_t)
                         t_obs_tmp = spectT[k][tcidx]
                         D_obs = spectP2[k][tcidx]
-                        # interpolate onto same time series
+                        # get predicted data
                         D_prd_cst = PRED_cst_ampl[k][j][gidx]
                         t_prd_cst = PRED_cst_time[k][j][ibest,gidx]
+                        if sum_width > 0
+                            # define windows
+                            sumwndws = minimum(t_prd_cst):Dates.Hour(sum_width):maximum(t_prd_cst)
+                            # set aside old unsummed versions
+                            t_prd_cst_old = deepcopy(t_prd_cst)
+                            D_prd_cst_old = deepcopy(D_prd_cst)
+                            # define new versions
+                            t_prd_cst = sumwndws[2:end].-Dates.Minute(sum_width*60/2)
+                            D_prd_cst = fill!(Vector{Float64}(undef,length(t_prd_cst)),NaN) # take mean of observations
+                            # sum in windows
+                            for i = 2:lastindex(sumwndws)
+                                #print(string("i=",i,"\n"))
+                                gidx = findall(sumwndws[i-1] .<= t_prd_cst_old .<= sumwndws[i])
+                                if !isempty(gidx)
+                                    gidx2 = findall(!isnan,D_prd_cst_old[gidx])
+                                    if !isempty(gidx2)
+                                        D_prd_cst[i-1] = sum(D_prd_cst_old[gidx[gidx2]])
+                                    end
+                                end
+                            end
+                        end
                         # normalize the prd and obs data
-                        D_prd_cst = D_prd_cst .- mean(filter(!isnan,D_prd_cst))
-                        D_prd_cst = D_prd_cst ./ mean(abs.(filter(!isnan,D_prd_cst)))
-                        D_obs = D_obs .- mean(filter(!isnan,D_obs))
-                        D_obs = D_obs ./ mean(abs.(filter(!isnan,D_obs)))
+                        if normamps == 1 # max norm
+                            global D_obs_DC_tmp = minimum(filter(!isnan,D_obs))
+                            D_obs = D_obs .-  D_obs_DC_tmp # min to zero
+                            global D_obs_scl_tmp = maximum(abs.(filter(!isnan,D_obs)))
+                            D_obs = P_obs ./ D_obs_scl_tmp # max abs to 1
+                            D_prd_cst = D_prd_cst .- minimum(filter(!isnan,D_prd_cst)) 
+                            D_prd_cst = D_prd_cst ./ maximum(abs.(filter(!isnan,D_prd_cst))) 
+                        elseif normamps == 2 # mean norm
+                            global D_obs_DC_tmp = minimum(filter(!isnan,D_obs))
+                            D_obs = D_obs .-  D_obs_DC_tmp # mean to zero
+                            global D_obs_scl_tmp = mean(abs.(filter(!isnan,D_obs)))
+                            D_obs = D_obs ./ D_obs_scl_tmp # mean abs to 1
+                            D_prd_cst = D_prd_cst .- minimum(filter(!isnan,D_prd_cst)) 
+                            D_prd_cst = D_prd_cst ./ mean(abs.(filter(!isnan,D_prd_cst))) 
+                        elseif normamps == 3 # median norm
+                            global D_obs_DC_tmp = minimum(filter(!isnan,D_obs))
+                            D_obs = D_obs .-  D_obs_DC_tmp # median to zero
+                            global D_obs_scl_tmp = median(abs.(filter(!isnan,D_obs)))
+                            D_obs = D_obs ./ D_obs_scl_tmp # median abs to 1
+                            D_prd_cst = D_prd_cst .- minimum(filter(!isnan,D_prd_cst)) 
+                            D_prd_cst = D_prd_cst ./ median(abs.(filter(!isnan,D_prd_cst))) 
+                        elseif normamps == 4 # area under curve
+                            global D_obs_DC_tmp = minimum(filter(!isnan,D_obs_cst))
+                            D_obs = D_obs .-  D_obs_DC_tmp # min to zero
+                            timedays = Dates.value.(convert.(Dates.Millisecond,t_obs_tmp))./(1000*86400)
+                            isort = sortperm(timedays)
+                            timedays = timedays[isort]; t_obs_tmp = t_obs_tmp[isort]
+                            D_obs = D_obs[isort]; 
+                            difftimedays = diff(timedays) ./2
+                            difftimedays = [difftimedays; 0].+[0; difftimedays]
+                            gidx = findall(.!isnan.(D_obs))
+                            global D_obs_scl_tmp = sum(difftimedays[gidx] .* D_obs[gidx])
+                            D_obs = D_obs ./ D_obs_scl_tmp # scl by area under curve to 1
+                            D_prd_cst = D_prd_cst .- minimum(filter(!isnan,D_prd_cst)) 
+                            timedays = Dates.value.(convert.(Dates.Millisecond,t_prd_cst))./(1000*86400)
+                            isort = sortperm(timedays)
+                            timedays = timedays[isort]; t_prd_cst = t_prd_cst[isort]
+                            D_prd_cst = D_prd_cst[isort]; 
+                            difftimedays = diff(timedays) ./2
+                            difftimedays = [difftimedays; 0].+[0; difftimedays]
+                            gidx = findall(.!isnan.(D_prd_cst))
+                            D_prd_cst = D_prd_cst ./ sum(difftimedays[gidx] .* D_prd_cst[gidx])
+                        elseif normamps == 0 # no norm
+                            global P_obs_DC_tmp = 0
+                            global P_obs_scl_tmp = 1
+                        else
+                            error("normamps setting not recognized!!")
+                        end
                         # smooth prediction
                         if fitsmooth
                             # get times with respect to spectT (obs)
@@ -2749,6 +2813,7 @@ if !go_to_results
                         # define new versions
                         raw_tcst_pred = sumwndws[2:end].-(3600*1000*sum_width/2)
                         raw_Dcst_prd = fill!(Vector{Float64}(undef,length(raw_tcst_pred)),NaN)
+                        P_obs_coarse = deepcopy(raw_Dcst_prd)
                         # sum in windows
                         for i = 2:lastindex(sumwndws)
                             gidx = findall(sumwndws[i-1] .<= raw_tcst_pred_old .<= sumwndws[i])
@@ -2758,28 +2823,34 @@ if !go_to_results
                                     raw_Dcst_prd[i-1] = sum(raw_Dcst_prd_old[gidx[gidx2]])
                                 end
                             end
+                            gidx = findall(sumwndws[i-1] .<= raw_tcst .<= sumwndws[i])
+                            if !isempty(gidx)
+                                gidx2 = findall(!isnan,P_obs[gidx])
+                                if !isempty(gidx2)
+                                    P_obs_coarse[i-1] = mean(P_obs[gidx[gidx2]]) # observations should not be integrated
+                                end
+                            end
                         end
+                        # get closest time indices
+                        tcidx_coarse = map(x->argmin(
+                            abs.(raw_tcst.-raw_tcst_pred[x])),
+                            1:lastindex(raw_tcst_pred))
+                        tcommon_coarse = tcst[tcidx_coarse]
+                        # get predicted data (from P_obs with storm subtracted)
+                        P_prd_cst_coarse = deepcopy(raw_Dcst_prd)
                     end
                     # sort times so that interpoaltion can be performed
-                    isort_cst = sortperm(raw_tcst_pred) 
+                    gidx = findall(.!isnan.(raw_Dcst_prd))
+                    isort_cst = sortperm(raw_tcst_pred[gidx]) 
                     # calculate interpolants
-                    itp_cst_ampl = LinearInterpolation(raw_tcst_pred[isort_cst],raw_Dcst_prd[isort_cst])
+                    itp_cst_ampl = LinearInterpolation(raw_tcst_pred[gidx[isort_cst]],raw_Dcst_prd[gidx[isort_cst]])
                     # apply interpolants and smooth
                     P_prd_cst = fill!(Vector{Float64}(undef,length(raw_tcst)),NaN)
                     gidx = findall(minimum(raw_tcst_pred) .<= raw_tcst .<= maximum(raw_tcst_pred))
                     P_prd_cst[gidx] = itp_cst_ampl(raw_tcst[gidx])
                     P_prd_cst = movmean(P_prd_cst,smoothlgth) # 15 minute tstep => 6hr window is 24 pt
                     # prepare coarse versions
-                    if sum_width > 0
-                        # get closest time indices
-                        tcidx_coarse = map(x->argmin(
-                            abs.(raw_tcst.-raw_tcst_pred[x])),
-                            1:lastindex(raw_tcst_pred))
-                        tcommon_coarse = tcst[tcidx_coarse]
-                        P_obs_coarse = P_obs[tcidx[tcidx_coarse]]
-                        # get predicted data (from P_obs with storm subtracted)
-                        P_prd_cst_coarse = raw_Dcst_prd
-                    else 
+                    if sum_width == 0
                         # get indices for prediction that are non-nan and within time limit
                         gidx_cst = findall(!isnan,PRED_cst_ampl[k][j])
                         # get closest time indices
@@ -2840,8 +2911,8 @@ if !go_to_results
                         if !fitsmooth
                             global hp32 = scatter(P_prd_cst_coarse,P_obs_coarse,mc=:red,
                                 xlabel="Prd",ylabel="Obs",label="") # observed vs predicted
-                            xtmp = range(minimum(filter(!isnan,P_prd_stm_coarse)),
-                                maximum(filter(!isnan,P_prd_stm_coarse)),100)
+                            xtmp = range(minimum(filter(!isnan,P_prd_cst_coarse)),
+                                maximum(filter(!isnan,P_prd_cst_coarse)),100)
                         else
                             global hp32 = scatter(P_prd_cst,P_obs[tcidx],mc=:red,xlabel="Prd",ylabel="Obs",label="")
                             xtmp = range(minimum(filter(!isnan,P_prd_stm)),
