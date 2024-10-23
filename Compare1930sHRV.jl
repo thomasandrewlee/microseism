@@ -41,7 +41,7 @@ using RobustModels
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med60_steps3_95/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med30_steps3_97/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -58,9 +58,9 @@ smoothing = 0.01 # smoothing window in Hz
 useroot = true # use square root instead of power
 # time filtering (to avoid seasonal observational density biases in historical)
 usejdayfilter = true # filter on days that have data for the entire set
-filtersize = 2 # size of window in days
+filtersize = 3 # size of window in days
 filterstep = 0.5 # step of filter window in days
-filtercomp = 0.2 # ratio of data to total size needed
+filtercomp = 0.1 # ratio of data to total size needed
 #goodmonths = [Dates.June Dates.July Dates.August] # leave empty to use all
 #goodmonths = [Dates.May Dates.June Dates.July] # leave empty to use all
 goodmonths = []
@@ -68,14 +68,14 @@ goodmonths = []
 removeharmonics = true
 Ncoefficients = 4 # how many overtones? (1 is fundamental only)
 t0 = 1 # in years
-harmonicsmedianwindow = 1/52 # in years
+harmonicsmedianwindow = 30/365 # in years
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
 rollmedwind = Dates.Day(30) # set to zero for none
 #rollmedwind = Dates.Day(0)
 trendmode = "quantile" # valid modes are "quantile" "l2" and "tukey"
-maxNaNratio = 0.75 # maximum ratio of NaN to data in rolling median
+maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 # bands = [ # seconds (one pair is a row with a lower and upper value)
 #     6 13; #secondary
@@ -85,57 +85,60 @@ maxNaNratio = 0.75 # maximum ratio of NaN to data in rolling median
 #     1 10; # peterson secondary peak
 #     ] 
 bands = [ # 3 second
-    1 4; # stepped bands
-    2 5;
-    3 6;
-    4 7;
-    5 8;
-    6 9;
-    7 10;
-    8 11;
-    9 12;
-    10 13;
-    11 14;
-    12 15;
-    13 16;
-    14 17;
-    15 18;
-    16 19;
-    17 20;
+    1 3; # stepped bands
+    2 4;
+    3 5;
+    4 6;
+    5 7;
+    6 8;
+    7 9;
+    8 10;
+    9 11;
+    10 12;
+    11 13;
+    12 14;
+    13 15;
+    14 16;
+    15 17;
+    16 18;
+    17 19;
+    18 20;
     ] 
 # bands = [ # 5 second
-#     1 6; # stepped bands
-#     2 7;
-#     3 8;
-#     4 9;
-#     5 10;
-#     6 11;
-#     7 12;
-#     8 13;
-#     9 14;
-#     10 15;
-#     11 16;
-#     12 17;
-#     13 18;
-#     14 19;
-#     15 20;
+#     1 5; # stepped bands
+#     2 6;
+#     3 7;
+#     4 8;
+#     5 9;
+#     6 10;
+#     7 11;
+#     8 12;
+#     9 13;
+#     10 14;
+#     11 15;
+#     12 16;
+#     13 17;
+#     14 18;
+#     15 19;
+#     16 20;
 #     ] 
 # bands = [ # 8 second
-#     1 9; # stepped bands
-#     2 10;
-#     3 11;
-#     4 12;
-#     5 13;
-#     6 14;
-#     7 15;
-#     8 16;
-#     9 17;
-#     10 18;
-#     11 19;
-#     12 20
+#     1 8; # stepped bands
+#     2 9;
+#     3 10;
+#     4 11;
+#     5 12;
+#     6 13;
+#     7 14;
+#     8 15;
+#     9 16;
+#     10 17;
+#     11 18;
+#     12 19;
+#     13 20;
 #     ] 
 # outlier culling
-outliers = [0 95] # percentiles for culling
+outliers = [0 97] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)

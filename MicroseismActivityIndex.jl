@@ -43,7 +43,7 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "MILTON_TEST"
+cRunName = "MILTON_TEST2"
 clearResults = false
 # data locations
 #cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
@@ -184,15 +184,17 @@ nanPenaltyWeight = 0.25 # maximum penalty (0.4 = 40% = x1.4) for all NaN
 ignoreCoastOvlp = false # ignore the coast ovlp 
 normamps = 1 # perform amplitude normalization
                 # 0 - none, 1 - max, 2 - mean, 3 - median, 4 - area under curve
-ampparamfit = false # use parameter grid search (hough transform) to fit amplitude, if false use linear 
+ampparamfit = true # use parameter grid search (hough transform) to fit amplitude, if false use linear 
 # for hough transform parameters:
 angles = 0:0.1:180
 Nrbins = 250
-linewidth = 0.5
+# linewidth = 0.5
+linewidth = 0.25
 N_trends = 1
-distweight = 0.25 # weight down based on average distance from the line
-Nweight = 0.75 # weight down based on how many points are included
-
+#distweight = 0.25 # weight down based on average distance from the line
+#Nweight = 0.75 # weight down based on how many points are included
+distweight = 0
+Nweight = 0
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
@@ -2268,7 +2270,7 @@ if !go_to_results
                     1:lastindex(xdat))
                 gidx = findall(tmpdists.<=xylength[j]) 
                 tmpval = length(gidx)
-                tmpval = tmpval - distweight*length(gidx)*(mean(tmpdists[gidx])/xylength[j]) # weight down by distance (higher dist => higher penalty)
+                tmpval = tmpval - distweight*length(gidx)*(mean(tmpdists[gidx].^2)/xylength[j]^2) # weight down by distance (higher dist => higher penalty)
                 tmpval = tmpval - Nweight*length(gidx)*(1-(length(gidx)/length(xdat))) # weight down by points covered (less points => higher penalty)
                 push!(val, tmpval)
                 push!(theta, angles[j])
@@ -2279,13 +2281,17 @@ if !go_to_results
         rbins = range(minimum(r), maximum(r), length=Nrbins)
         drbins = 0.5*(rbins[2]-rbins[1])
         Mval = fill!(Array{Float64,2}(undef,(length(angles),Nrbins)),0) # matrix form for values
+        MvalCnt = deepcopy(Mval)
         for i = 1:lastindex(val)
             thtidx = findall(theta[i].==angles)
             ridx = argmin(abs.(r[i].-rbins))
+            MvalCnt[thtidx,ridx] = MvalCnt[thtidx,ridx].+1
             Mval[thtidx,ridx] = Mval[thtidx,ridx].+val[i]
         end
-        hp1 = heatmap(rbins,angles,Mval,xlabel="r",ylabel="theta",)
-            #clim=(minimum(Mval[:]),percentile(Mval[:],99.99)))
+        MvalCnt[MvalCnt.==0].=1 # avoid divide by 0, this is ok bc 0/1 = 0
+        Mval = Mval ./ MvalCnt
+        hp1 = heatmap(rbins,angles,Mval,xlabel="r",ylabel="theta",
+            clim=(minimum(Mval[Mval.>0]),percentile(Mval[:],99.99)))
         # find maxima
         fit_r = []
         fit_theta = []
