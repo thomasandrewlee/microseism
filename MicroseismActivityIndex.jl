@@ -43,11 +43,11 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "MILTON_TEST2"
+cRunName = "MILTON_TEST3"
 clearResults = false
 # data locations
 #cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
-cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton.txt")
+cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton_even.txt")
 #spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
@@ -74,7 +74,7 @@ cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new1b_FINDFIT.jld")
-prediction_save_file = string(user_str,"Desktop/MAI/DWPF_MILTON_1.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/DWPF_MILTON_2.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -174,7 +174,7 @@ noYscalefreq = true # don't fix the yscale for the Hidx plots
 # fitting parameters
 fitsmooth = false # use interpolation instead of single points to fit for storm dependent
 smoothlgth = 48 # number of 15 minute steps (or whatever step size) to smooth over
-sum_width = 3 # width of summing windows in hours (not date type, 0 to turn off)
+sum_width = 24 # width of summing windows in hours (not date type, 0 to turn off)
 t_travel_cutoff = Dates.Day(21) # cutoff for t_travel
 removeStorm = false # remove storm part of the signal
 weightingAmp = 0.0 # how much range of weighting is asigned to amplitude (0 means no weighting)
@@ -186,14 +186,14 @@ normamps = 1 # perform amplitude normalization
                 # 0 - none, 1 - max, 2 - mean, 3 - median, 4 - area under curve
 ampparamfit = true # use parameter grid search (hough transform) to fit amplitude, if false use linear 
 # for hough transform parameters:
-angles = 0:0.1:180
+angles = 0:0.05:180
 Nrbins = 250
 linewidth = 0.5
 N_trends = 1
 #distweight = 0.25 # weight down based on average distance from the line
 #Nweight = 0.75 # weight down based on how many points are included
-distweight = 0.1
-Nweight = 0
+distweight = 0.2
+Nweight = 0.5
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
@@ -2717,7 +2717,7 @@ if !go_to_results
                             global D_obs_DC_tmp = minimum(filter(!isnan,D_obs))
                             D_obs = D_obs .-  D_obs_DC_tmp # min to zero
                             global D_obs_scl_tmp = maximum(abs.(filter(!isnan,D_obs)))
-                            D_obs = P_obs ./ D_obs_scl_tmp # max abs to 1
+                            D_obs = D_obs ./ D_obs_scl_tmp # max abs to 1
                             D_prd_cst = D_prd_cst .- minimum(filter(!isnan,D_prd_cst)) 
                             D_prd_cst = D_prd_cst ./ maximum(abs.(filter(!isnan,D_prd_cst))) 
                         elseif normamps == 2 # mean norm
@@ -2846,8 +2846,8 @@ if !go_to_results
                     itp_cst_ampl = LinearInterpolation(raw_tcst_pred[gidx[isort_cst]],raw_Dcst_prd[gidx[isort_cst]])
                     # apply interpolants and smooth
                     P_prd_cst = fill!(Vector{Float64}(undef,length(raw_tcst)),NaN)
-                    gidx = findall(minimum(raw_tcst_pred) .<= raw_tcst .<= maximum(raw_tcst_pred))
-                    P_prd_cst[gidx] = itp_cst_ampl(raw_tcst[gidx])
+                    gidx2 = findall(minimum(raw_tcst_pred[gidx]) .<= raw_tcst .<= maximum(raw_tcst_pred[gidx]))
+                    P_prd_cst[gidx2] = itp_cst_ampl(raw_tcst[gidx2])
                     P_prd_cst = movmean(P_prd_cst,smoothlgth) # 15 minute tstep => 6hr window is 24 pt
                     # prepare coarse versions
                     if sum_width == 0
@@ -3044,7 +3044,7 @@ if !go_to_results
                         plot!(hp_power,tcst,P_prd_cst,lc=:red,ls=:dash,label="")
                         plot!(hp_power,tstm,P_prd_stm,lc=:blue,ls=:dash,label="")
                         scatter!(hp_power,
-                            PRED_cst_time[k][j][ibest,:],PRED_cst_ampl[k][j],
+                            tcommon_coarse,P_prd_cst_coarse,
                             mc=:red,ms=3,label="cst", msa=0, msw=0.1,
                         )
                         scatter!(hp_power,
@@ -3078,8 +3078,8 @@ if !go_to_results
                             stm_DC[k,j] .+ stm_scl[k,j].*P_prd_stm,
                             lc=:blue,ls=:dash,label="")
                         scatter!(hp_power2,
-                            PRED_cst_time[k][j][ibest,:],
-                            cst_DC[k,j] .+ cst_scl[k,j].*PRED_cst_ampl[k][j],
+                            tcommon_coarse,
+                            cst_DC[k,j] .+ cst_scl[k,j].*P_prd_cst_coarse,
                             mc=:red,ms=3,label="cst", msa=0, msw=0.1,
                         )
                         scatter!(hp_power2,
