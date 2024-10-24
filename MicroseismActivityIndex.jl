@@ -44,6 +44,7 @@ using FindPeaks1D
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
 cRunName = "MILTON_TEST3"
+cRunName = "3640_100_1"
 clearResults = false
 # data locations
 #cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
@@ -52,11 +53,11 @@ cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURD
 spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
-#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_75prct_4hr_NEW.jld") # save file from initial readin
-spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
+#spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
 spect_save_as_mat = false
-#seisreadmode = "standard"
-seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
+seisreadmode = "standard"
+#seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
 station_gains_file = [] # use this empty to avoid correcting gains
 #station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
 use_baro = false
@@ -87,10 +88,10 @@ plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
 # stime = Dates.DateTime(1988,1,1) # start time for spectra 
 # etime = Dates.DateTime(2024,1,1) # end time for spectra 
-# stime = Dates.DateTime(1936,1,1) # start time for spectra 
-# etime = Dates.DateTime(1941,1,1) # end time for spectra 
-stime = Dates.DateTime(2024,10,1) # start time for spectra 
-etime = Dates.DateTime(2024,11,1) # end time for spectra 
+stime = Dates.DateTime(1936,1,1) # start time for spectra 
+etime = Dates.DateTime(1941,1,1) # end time for spectra 
+# stime = Dates.DateTime(2024,10,1) # start time for spectra 
+# etime = Dates.DateTime(2024,11,1) # end time for spectra 
 
 # spectra settings (should match MakeStationSpectrograms settings)
 # # old versipon (LHZ data)
@@ -121,9 +122,9 @@ padwith = NaN # NaN recommended!!!
 # swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
-swind = Dates.Minute(240) # window in which to get representative spectra (set to 0 to skip culling)
+swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
 sstep = Dates.Minute(15) # window step
-cull_ratio = 0.75 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 combineComps = false # turn on to combine data files (for legacy data)
 seasonal_avg_window = Dates.Day(120) # rolling average window for seasonal trend
 seasonal_avg_window = Dates.Day(0) # set to zero to not remove
@@ -275,7 +276,7 @@ if !go_to_results
         mkdir(cDataOut)
     end
 
-    if seisreadmode=="Standard"
+    if seisreadmode=="standard"
         ## READ IN SEISMIC
         print(string("Writing read-in report to: ",cDataOut,"read_in.txt\n\n"))
         io = open(string(cDataOut,"read_in.txt"),"w")

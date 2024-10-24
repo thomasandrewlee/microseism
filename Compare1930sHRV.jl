@@ -41,7 +41,7 @@ using RobustModels
 
 ## SETTINGS
 # output
-c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med30_steps3_97/")
+c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_logfrqwght_Med14_steps3_97/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -52,7 +52,7 @@ c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_75prct
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
-c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl_stack10/txfr.jld") 
+c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl_stack10_logfrqwght/txfr.jld") 
 smoothing = 0.01 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
@@ -72,7 +72,7 @@ harmonicsmedianwindow = 30/365 # in years
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
-rollmedwind = Dates.Day(30) # set to zero for none
+rollmedwind = Dates.Day(14) # set to zero for none
 #rollmedwind = Dates.Day(0)
 trendmode = "quantile" # valid modes are "quantile" "l2" and "tukey"
 maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
@@ -373,15 +373,14 @@ for i = 1:Nbands
     # consider summing using trapezoidal sum
     # get the filtered data
     oldfidx = findall(1/bands[i,2].<=oldFall.<=1/bands[i,1])
-    # global oldD = vec(sum(oldDall[oldfidx,:],dims=1))./(length(oldfidx)*mean(diff(oldFall)))
-    global oldD = map(x->lf.trapsum(oldFall[oldfidx],vec(oldDall[oldfidx,x])),1:lastindex(oldTall))
     newfidx = findall(1/bands[i,2].<=newF.<=1/bands[i,1])
-    #global newD = vec(sum(newD0[newfidx,:],dims=1))./(length(newfidx)*mean(diff(newF)))
+    # global newD = vec(sum(newD0[newfidx,:],dims=1))./(length(newfidx)*mean(diff(newF)))
+    # global oldD = vec(sum(oldDall[oldfidx,:],dims=1))./(length(oldfidx)*mean(diff(oldFall)))
     global newD = map(x->lf.trapsum(newF[newfidx],vec(newD0[newfidx,x])),1:lastindex(newT))
-    # sqrt if need
+    global oldD = map(x->lf.trapsum(oldFall[oldfidx],vec(oldDall[oldfidx,x])),1:lastindex(oldTall))
     if useroot
-        oldD = sqrt.(oldD)
         newD = sqrt.(newD)
+        oldD = sqrt.(oldD)
         global unitstring = "m/s"
     else
         global unitstring = "(m/s)^2"
