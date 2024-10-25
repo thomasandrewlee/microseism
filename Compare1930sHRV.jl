@@ -42,22 +42,23 @@ using RobustModels
 ## SETTINGS
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_logfrqwght_Med14_steps3_97/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST2/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_10prct_6hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld")
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_75prct_4hr_NEW.jld")
-c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_75prct_4hr_NEW.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
+c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
-c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl_stack10_logfrqwght/txfr.jld") 
-smoothing = 0.01 # smoothing window in Hz
+c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M6.0_LPZ_BHZ_ampscl_stack10/txfr.jld") 
+smoothing = 0.05 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
 # time filtering (to avoid seasonal observational density biases in historical)
-usejdayfilter = true # filter on days that have data for the entire set
+usejdayfilter = false # filter on days that have data for the entire set
 filtersize = 3 # size of window in days
 filterstep = 0.5 # step of filter window in days
 filtercomp = 0.1 # ratio of data to total size needed
@@ -65,17 +66,19 @@ filtercomp = 0.1 # ratio of data to total size needed
 #goodmonths = [Dates.May Dates.June Dates.July] # leave empty to use all
 goodmonths = []
 # harmonics (seasonal)
-removeharmonics = true
+removeharmonics = false
 Ncoefficients = 4 # how many overtones? (1 is fundamental only)
 t0 = 1 # in years
 harmonicsmedianwindow = 30/365 # in years
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
-rollmedwind = Dates.Day(14) # set to zero for none
+rollmedwind = Dates.Day(0) # set to zero for none
 #rollmedwind = Dates.Day(0)
 trendmode = "quantile" # valid modes are "quantile" "l2" and "tukey"
 maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
+# outlier culling
+outliers = [0 99] # percentiles for culling
 # bands for primary and secondary
 # bands = [ # seconds (one pair is a row with a lower and upper value)
 #     6 13; #secondary
@@ -137,8 +140,6 @@ bands = [ # 3 second
 #     12 19;
 #     13 20;
 #     ] 
-# outlier culling
-outliers = [0 97] # percentiles for culling
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -642,7 +643,7 @@ for i = 1:Nbands
         scatter!(hpd1,oldTyear,oldDfilt0,
         mc=:gray,ma=0.5,ms=1,label="")
     end
-    plot!(hpd1,oldTyear,oldDfilt,lw=4,
+    plot!(hpd1,oldTyear,oldDfilt,lw=2,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(oldTyear[1],oldTyear[end],100)
     plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(olde*1.96,sigdigits=2),
@@ -655,7 +656,7 @@ for i = 1:Nbands
         scatter!(hpd2,newTyear,newDfilt0,
         mc=:gray,ma=0.5,ms=1,label="")
     end
-    plot!(hpd2,newTyear,newDfilt,lw=4,
+    plot!(hpd2,newTyear,newDfilt,lw=2,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
     xtmp = range(newTyear[1],newTyear[end],100)
     plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newe*1.96,sigdigits=2),
