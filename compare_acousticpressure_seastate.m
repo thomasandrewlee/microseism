@@ -36,32 +36,34 @@ end
 %% read data
 load(c_MERDAT_COP);
 
-%% intialize cell struct for bands
-bandpow = {}; % matrix of N bands x M times for each buoy
-times = {};
-lat = {};
-lon = {};
-varofint = {}; % matrix of N vars x M times for each buoy
+%% intialize matrices for data
+% get total number of samples for preallocation
+%
+bandpow = []; % matrix of N bands x M times for each buoy
+times = [];
+lat = [];
+lon = [];
+varofint = []; % matrix of N vars x M times for each buoy
 
 %% compute integrations
+colnum = 1;
 % loop over buoys
-for i = 1:length(MERDAT)
-    % initialize temp variables
-    tmpow = 
+for i = 1:length(MERDAT) 
     % loop over dives
     for j = 1:length(MERDAT(i).dat)
         % loop over spectra
         for k = 1:length(MERDAT(i).dat(j).time)
+            % save time and pos
             % loop over bands
             for l = 1:Nbands
-                % convert from dB to positive units
+                % convert from dB to power
                 % compute integration in band
-                % save into temp variables
+                % convert back to dB
+                % save into variables
             end
-            % save vars info
+            % save copernicus vars
         end
     end
-    % save into cell structs
 end
 
 %% plot
