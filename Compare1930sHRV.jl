@@ -42,13 +42,13 @@ using RobustModels
 ## SETTINGS
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_logfrqwght_Med14_steps3_97/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST2/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST3/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_10prct_6hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld")
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
@@ -73,10 +73,10 @@ harmonicsmedianwindow = 30/365 # in years
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
-rollmedwind = Dates.Day(0) # set to zero for none
+rollmedwind = Dates.Day(10) # set to zero for none
 #rollmedwind = Dates.Day(0)
 trendmode = "quantile" # valid modes are "quantile" "l2" and "tukey"
-maxNaNratio = 0.9 # maximum ratio of NaN to data in rolling median
+maxNaNratio = 0.6 # maximum ratio of NaN to data in rolling median
 # outlier culling
 outliers = [0 99] # percentiles for culling
 # bands for primary and secondary
@@ -87,26 +87,37 @@ outliers = [0 99] # percentiles for culling
 #     5 10; # reliable looking part of response
 #     1 10; # peterson secondary peak
 #     ] 
-bands = [ # 3 second
-    1 3; # stepped bands
+# bands = [ # 3 second
+#     1 3; # stepped bands
+#     2 4;
+#     3 5;
+#     4 6;
+#     5 7;
+#     6 8;
+#     7 9;
+#     8 10;
+#     9 11;
+#     10 12;
+#     11 13;
+#     12 14;
+#     13 15;
+#     14 16;
+#     15 17;
+#     16 18;
+#     17 19;
+#     18 20;
+#     ] 
+bands = [ # 3 second evens (odd band centers)
     2 4;
-    3 5;
     4 6;
-    5 7;
     6 8;
-    7 9;
     8 10;
-    9 11;
     10 12;
-    11 13;
     12 14;
-    13 15;
     14 16;
-    15 17;
     16 18;
-    17 19;
     18 20;
-    ] 
+    ]
 # bands = [ # 5 second
 #     1 5; # stepped bands
 #     2 6;

@@ -43,8 +43,7 @@ using FindPeaks1D
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "MILTON_TEST3"
-cRunName = "3640_100_1"
+cRunName = "RICK_TEST1"
 clearResults = false
 # data locations
 #cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
@@ -53,11 +52,14 @@ cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURD
 spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
 spect_save_as_mat = false
-seisreadmode = "standard"
+#seisreadmode = "standard"
+seisreadmode = "rickmicrometric" # input files for aster et al. processing
 #seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
+micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
 station_gains_file = [] # use this empty to avoid correcting gains
 #station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
 use_baro = false
@@ -86,10 +88,10 @@ StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.
 #plot_f_range = [0.01,0.6]
 plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
-# stime = Dates.DateTime(1988,1,1) # start time for spectra 
-# etime = Dates.DateTime(2024,1,1) # end time for spectra 
-stime = Dates.DateTime(1936,1,1) # start time for spectra 
-etime = Dates.DateTime(1941,1,1) # end time for spectra 
+stime = Dates.DateTime(1988,1,1) # start time for spectra 
+etime = Dates.DateTime(2024,1,1) # end time for spectra 
+# stime = Dates.DateTime(1936,1,1) # start time for spectra 
+# etime = Dates.DateTime(1941,1,1) # end time for spectra 
 # stime = Dates.DateTime(2024,10,1) # start time for spectra 
 # etime = Dates.DateTime(2024,11,1) # end time for spectra 
 
@@ -737,6 +739,84 @@ if !go_to_results
         global spectP0 = deepcopy(spectD)
         # make spectD a matrix
         spectD = [reshape(spectD[1].^10,1,length(spectD[1]))]
+    elseif seisreadmode == "rickmicrometric" 
+        # read in PSD sums from rick / adam for the ASter et al. multidecadal
+        global names = ["HRV.00"]
+        global slat = [42.5064]
+        global slon = [-71.5583]
+        global spectF = [1 ./(19:-2:5)] # band centers (freq)
+        global spectD = []
+        global spectT = []
+        ln = open(micrometric_input_File) do f
+            readlines(f)
+        end
+        for il = 2:lastindex(ln) # skip header line
+            #print(string("il=",il,"\n"))
+            commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
+            ytmp = parse(Int64,ln[il][commas[4]+1:commas[5]-1])
+            jtmp = parse(Int64,ln[il][commas[5]+1:commas[6]-1])
+            htmp = parse(Int64,ln[il][commas[6]+1:commas[7]-1])
+            mtmp = parse(Int64,ln[il][commas[7]+1:commas[8]-1])
+            push!(spectT,Dates.DateTime(ytmp)+Dates.Day(jtmp)+Dates.Hour(htmp)+Dates.Minute(mtmp))
+            # get data
+            tmpD = fill!(rand(length(spectF[1]),1),NaN)
+            for j = 1:length(tmpD)
+                tmpD[j] = parse(Float64,ln[il][commas[(j*2)+6]+1:commas[(j*2)+7]-1])
+            end
+            if isempty(spectD)
+                global spectD = tmpD
+            else
+                global spectD = [spectD tmpD]
+            end
+        end 
+        spectD = [spectD]; spectT = [spectT];
+        # now do the culling within swind windows
+        if swind!=Dates.Minute(0)
+            print("Culling data to get representative noise spectra for:\n")
+            print(string("  ",names[1],"\n"))
+            # get window starts
+            tmpwindstarts = minimum(spectT[1]):sstep:maximum(spectT[1])-swind
+            newD = fill!(Array{Float32,2}(undef,(length(spectF[1]),length(tmpwindstarts))),NaN) # new spectras
+            # convert to integers for lookup speed efficiency
+            swindI = Dates.value(Dates.Millisecond(swind))
+            spectTI = Dates.value.(spectT[1].-spectT[1][1])
+            tmpwindstartsI = Dates.value.(tmpwindstarts.-spectT[1][1])
+            # loop over windows
+            for j in ProgressBar(1:lastindex(tmpwindstarts))
+                # get spectra in window
+                local tidx = findall(tmpwindstartsI[j] .<= spectTI .<= tmpwindstartsI[j]+swindI)
+                if !isempty(tidx)
+                    if isempty(plot_f_range)
+                        global ridx = 1:lastindex(spectF[1])
+                    else
+                        global ridx = findall(plot_f_range[1] .<= spectF[1] .<= plot_f_range[2])
+                    end
+                    # calculate power of those spectra
+                    tmppow = map(x -> sum(spectD[1][ridx,tidx[x]]), 1:lastindex(tidx))
+                    # sort by power
+                    power_sort_idx = sortperm(tmppow)
+                    # cull (consider average of N spectra with lowest power)
+                    Nspect = convert(Int,ceil(length(tmppow)*cull_ratio))
+                    avgSpect = median(spectD[1][:,tidx[power_sort_idx[1:Nspect]]],dims=2)
+                    # save data
+                    newD[:,j] = avgSpect
+                end
+            end
+            # set
+            spectT[1] = tmpwindstarts .+ (swind/2)
+            spectD[1] = newD
+        end
+        # Get 1D power
+        global spectP0 = sum(spectD,dims=1)
+        # SAVE DATA
+        save(spect_save_File,
+            "names",names,
+            "slat",slat,
+            "slon",slon,
+            "spectD",spectD,
+            "spectT",spectT,
+            "spectF",spectF,
+        )
     else
         error("Value for parameter ''seisreadmode'' not recognized!")
     end
