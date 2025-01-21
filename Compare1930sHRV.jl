@@ -44,7 +44,7 @@ using LombScargle
 ## SETTINGS
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med14_steps3_97/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_logfrqwght/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -58,7 +58,7 @@ readin_new = "rickmicrometric" # convert to velocity and divide into bands
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
-c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M5.5_LPZ_BHZ_ampscl_stack10/txfr.jld") 
+c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M5.5_LPZ_BHZ_ampscl_stack10_logfrqwght/txfr.jld") 
 smoothing = 0.02 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power

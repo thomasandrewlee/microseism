@@ -39,45 +39,48 @@ using NaNStatistics
 using CurveFit
 using ProgressBars
 using FindPeaks1D
+using LombScargle
+using RobustLeastSquares
 
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "RICK_TEST1"
+cRunName = "TEST20250116_RMW"
 clearResults = false
 # data locations
+cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_2021-23.txt") # HURDAT file
 #cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
-cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton_even.txt")
-#spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
-spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+#cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton_even.txt")
+spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226_secondary_5_10.jld")
 spect_save_as_mat = false
-#seisreadmode = "standard"
-seisreadmode = "rickmicrometric" # input files for aster et al. processing
+seisreadmode = "standard"
+#seisreadmode = "rickmicrometric" # input files for aster et al. processing
 #seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
 micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
-station_gains_file = [] # use this empty to avoid correcting gains
-#station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
+#station_gains_file = [] # use this empty to avoid correcting gains
+station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
+#METAR_jld_file = [] # leave this empty to read LDO sac
 baro_data_sac = [string(user_str,"Downloads/hrvbaro.550054/30/"),] # directories of sac
-baro_save_file = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_METAR_BOS_barosave.jld")
-# baro_save_file = string(user_str,"Desktop/MAI/HRV_BHZ_2010_2022_barosave.jld") # save file from initial readin
-# cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1936-40.txt") # HURDAT file
-# spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
-# spect_save_File = string(user_str,"Desktop/FitStorms/HRV_ALL_1936_1940_spectsave.jld") 
+baro_save_file = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_METAR_BED_barosave.jld")
+#baro_save_file = string(user_str,"Desktop/MAI/HRV_BHZ_2010_2022_barosave_NEW.jld") # save file from initial readin
 # gebco stuff
 cInput_GEBCO = string(user_str,"Research/GEBCO_Bathymetry/gebco_2022_ascii_NORTHATLANTICBIG/gebco_2022_n70.0_s0.0_w-100.0_e-10.0.asc")
 cGEBCO_jld = string(user_str,"Research/GEBCO_Bathymetry/NorAtlBathBig.jld")
 # save stuff
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_1022_0.2_0.8_ITRA0_prediction.jld") # save file for prediction
 prediction_save_file = string(user_str,"Desktop/MAI/HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new1b_FINDFIT.jld")
-prediction_save_file = string(user_str,"Desktop/MAI/DWPF_MILTON_2.jld")
+prediction_save_file = string(user_str,"Desktop/MAI/2021_23_TEST_33_RMW.jld")
+# prediction_save_file = string(user_str,"Desktop/MAI/DWPF_MILTON_2.jld")
 results_save_file = string(user_str,"Desktop/MAI/",cRunName,"_results.jld") # save file for prediction
 go_to_results = false
 storm_ranking_file = string(user_str,"Desktop/MAI/StormRankings20240607.csv")
@@ -86,10 +89,12 @@ cDataOut = string(user_str,"Desktop/MAI/",cRunName,"/") # data output folder
 # station frequency and time information
 StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.STA.INST.CHNL format
 #plot_f_range = [0.01,0.6]
-plot_f_range = [0.01,1.0] # range of frequencies to plot things over
-baro_f_range = [0.1,0.2] # range of frequencies to consider in making barometry comparison
+plot_f_range = [0.1,0.5] # range of frequencies to plot things over
+baro_f_range = [0.3,0.6] # range of frequencies to consider in making barometry comparison
 stime = Dates.DateTime(1988,1,1) # start time for spectra 
 etime = Dates.DateTime(2024,1,1) # end time for spectra 
+# stime = Dates.DateTime(2021,1,1) # start time for spectra 
+# etime = Dates.DateTime(2024,1,1) # end time for spectra 
 # stime = Dates.DateTime(1936,1,1) # start time for spectra 
 # etime = Dates.DateTime(1941,1,1) # end time for spectra 
 # stime = Dates.DateTime(2024,10,1) # start time for spectra 
@@ -113,24 +118,27 @@ Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz pea
 # wovp1 = .1 # overlap of time windows as a fraction of wlen1
 # wlen2 = [] # window length for each welch periodogram segment in seconds
 # wovp2 = [] # overlap of welch periodogram overlap
-Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
+# Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
 
 # seismic culling and processing
+vel2amp = true # convert velocity to amplitude
 trimFimmediately = true # trim the spectF to plot_f_range (plot_f_range must not be empty) 
 padwith = NaN # NaN recommended!!!
-# swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
-# sstep = Dates.Minute(15) # window step
-# cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
+sstep = Dates.Minute(15) # window step
+cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 # swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
-swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
-sstep = Dates.Minute(15) # window step
-cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+# swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
+# sstep = Dates.Minute(15) # window step
+# cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 combineComps = false # turn on to combine data files (for legacy data)
-seasonal_avg_window = Dates.Day(120) # rolling average window for seasonal trend
-seasonal_avg_window = Dates.Day(0) # set to zero to not remove
-baro_smoothing_window = Dates.Day(120)
+seasonal_avg_fourier = 4 # this supercedes average setting, 0 means try the average, 1 is the fundamental, 2 is first overtone, N is N-1 overtone
+DaysInYear = 365.2422 # tropical year in days
+seasonal_avg_window = Dates.Day(60) # rolling average window for seasonal trend
+#seasonal_avg_window = Dates.Day(0) # set to zero to not remove
+baro_smoothing_window = Dates.Day(60)
 time_lags = Dates.Minute.(-1*24*60:15:2*24*60) # time lag for correlating barometric data
 baro_corr_wndw_size = Dates.Hour(21*24) # must be even!
 baro_corr_wndw_step = Dates.Day(1)
@@ -140,7 +148,7 @@ baro_scl_wndw_step = Dates.Day(1)
 # storm processing
 waiveDataCovReq = true # don't require 90% data coverage to run storm
 dlwest_latrange = 0.5 # degrees n or s lat to consider.
-filterOverlap = true # filter out overlapping storms
+filterOverlap = false # filter out overlapping storms
 Ovlp_fore = Dates.Hour(24*1) # pad of overlap before
 Ovlp_aft = Dates.Hour(24*1) # pad of overlap after
 filtwindb4overlap = true # throw out low windspeed storms before considering overlaps
@@ -149,6 +157,8 @@ minwindspeed = 33 # only consider storms that attain a maximal windspeed above t
 # if filter overlap is false and using storm rankings
 stormRankings = false
 stormWeighting = [4,5] # cutoff for inclusion ranking i.e., 1,5 or 2,5
+ignoreRMW = false # use inverse thingy or constant over anything else (only to run 2021-24 w/o stuff)
+constantRMW = false # as an alternative to inverse RMW (also responds to ignoreRMW)
 
 # model parameters
 vRayleigh = 3000 # m/s
@@ -162,6 +172,7 @@ baro_diag_plots = true # barometry diagnostics
 makeHidxPlots = true
 makeHeatmaps = true
 makeQuarterlyHeatmaps = true
+makeAnnualHeatmaps = true
 makeMaps = true
 minmapbnds_y = [10, 60] # map bound ranges
 minmapbnds_x = [-100, -45]
@@ -177,17 +188,17 @@ noYscalefreq = true # don't fix the yscale for the Hidx plots
 # fitting parameters
 fitsmooth = false # use interpolation instead of single points to fit for storm dependent
 smoothlgth = 48 # number of 15 minute steps (or whatever step size) to smooth over
-sum_width = 24 # width of summing windows in hours (not date type, 0 to turn off)
-t_travel_cutoff = Dates.Day(21) # cutoff for t_travel
+sum_width = 0 # width of summing windows in hours (not date type, 0 to turn off)
+t_travel_cutoff = Dates.Day(60) # cutoff for t_travel
 removeStorm = false # remove storm part of the signal
 weightingAmp = 0.0 # how much range of weighting is asigned to amplitude (0 means no weighting)
 wghtByPoints = true # divide sum of squares by number of points
 penalizeForNaNs = false # weight by the non number of nan points
 nanPenaltyWeight = 0.25 # maximum penalty (0.4 = 40% = x1.4) for all NaN
 ignoreCoastOvlp = false # ignore the coast ovlp 
-normamps = 1 # perform amplitude normalization
+normamps = 3 # perform amplitude normalization
                 # 0 - none, 1 - max, 2 - mean, 3 - median, 4 - area under curve
-ampparamfit = true # use parameter grid search (hough transform) to fit amplitude, if false use linear 
+ampparamfit = false # use parameter grid search (hough transform) to fit amplitude, if false use linear 
 # for hough transform parameters:
 angles = 0:0.05:180
 Nrbins = 250
@@ -197,9 +208,13 @@ N_trends = 1
 #Nweight = 0.75 # weight down based on how many points are included
 distweight = 0.2
 Nweight = 0.5
+userlmfit = true # if ampparamfit is false, this will use a robust model instead of a standard linear fit
+trendmode = "quantile"
+
 # atmosphere-ocean coupling parameters
 # Vwind2Vphase_fetchfile = string(user_str,"Desktop/FitStorms/HRV_1022_TEMP_SMOOTH48_TTLIM14_ITR0_Vw2Vp_fetch_20240305_1749.jld") 
 #Vwind2Vphase = 0.2:0.001:0.8 # range of windvelocity to swell velocity couplings
+## NOTE VWIND2VPHASE CAN BE CONSIDERED EQUIVALENT TO WAVE AGE
 Vwind2Vphase = 0.02:0.002:0.2
 #Vwind2Vphase = [1 ./(2.0:-0.01:1.01); 1.0:0.01:2.0]
 #Vwind2Vphase = [1]
@@ -228,40 +243,84 @@ function Vw2Vp_func(wndspd0,wndspd,dlwest,dstnce)
 end
 
 # amplitude scaling variations
-function Ascl_cst_func(prdamp,wndspd)
-    Ascl_cst_A = 1.0 # linear by default for now
-    Ascl_cst_B = 0.0
-    # Ascl_cst_A = -0.7545 # 2b no hough
-    # Ascl_cst_B = 0.01319
-    # # Linear a + bx
-    # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*prdamp).*prdamp
+function Ascl_cst_func(prdamp,wndspd,rmw,dist) # PREDICTED AMPLIUDE SHOULD DEPEND ON WINDSPEED AND RMW
+    # pi*RMW^2 * (C_D(U_10)*U_10 )^2 / (1/d_c) for the estimated amplitude
+    # Make C_D
+    U_10 = 0:100 # in m/s
+    C_D = fill!(rand(lastindex(U_10)),NaN)
+    C_D_sat = 2500 # drag coefficient value
+    C_D_corner = 30 # m/s
+    for i = 1:lastindex(C_D)
+        if U_10[i] >= C_D_corner
+            C_D[i] = U_10[i]*(C_D_sat/C_D_corner)
+        else
+            C_D[i] = C_D_sat
+        end 
+    end
+    u_10_idx = map(x->argmin(abs.(U_10.-wndspd[x])),1:lastindex(wndspd))
+    # scale
+    effective_rad = map(x->minimum([rmw[x] dist[x]]),1:lastindex(rmw))
+    obsamp = log10.((pi.*effective_rad.^2).*((C_D[u_10_idx].*wndspd).^2).*(1 ./(2*pi*dist)))
+    #obsamp = obsamp.-25;
+    # remove -inf values (from going over land)
+    obsamp[obsamp.==Inf] .= NaN
+    # Ascl_cst_A = 1.0 # linear by default for now
+    # Ascl_cst_B = 0.0
+    # Ascl_cst_A = 2.23 # 2b no hough
+    # Ascl_cst_B = 0.093
+    # Linear a + bx
+    # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*obsamp).*obsamp
     # # Power ax^b
     # Ascl_cst_A = 5.37532 # linear by default for now
     # Ascl_cst_B = -0.98366
     # Ascl_cst_A = 5.08133 # linear by default for now
     # Ascl_cst_B = -0.9666
-    obsamp = prdamp.^2
-    obsamp = log10.(obsamp).*10
-    obsamp = (Ascl_cst_A .+ Ascl_cst_B.*obsamp).*obsamp
+    # obsamp = prdamp.^2
+    # obsamp = log10.(obsamp).*10
+    # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*obsamp).*obsamp
     # # Log a + b log(x)
     # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*log.(prdamp)).*prdamp
     return obsamp
 end
-function Ascl_stm_func(prdamp,wndspd)
-    Ascl_stm_A = 1.0 # linear by default for now
-    Ascl_stm_B = 0.0
+function Ascl_stm_func(prdamp,wndspd,rmw,dist)
+    # C_D controls wave height and scales with U_10, RMW controls area of generation
+    # C_D goes with U_10 linearly then saturates at 30m/s: https://journals.ametsoc.org/view/journals/phoc/51/10/JPO-D-21-0023.1.xml
+    U_10 = 0:100 # in m/s
+    C_D = fill!(rand(lastindex(U_10)),NaN)
+    C_D_sat = 2500 # drag coefficient value
+    C_D_corner = 30 # m/s
+    for i = 1:lastindex(C_D)
+        if U_10[i] >= C_D_corner
+            C_D[i] = U_10[i]*(C_D_sat/C_D_corner)
+        else
+            C_D[i] = C_D_sat
+        end 
+    end
+    u_10_idx = map(x->argmin(abs.(U_10.-wndspd[x])),1:lastindex(wndspd))
+    # now figure out the amplitude
+    effective_rad = map(x->minimum([rmw[x] dist[x]]),1:lastindex(rmw))
+    obsamp = log10.((pi.*effective_rad.^2).*((C_D[u_10_idx].*wndspd).^2).*(1 ./(2*pi*dist)))
+    #obsamp = obsamp.-25;
+    # remove -inf values (from going over land)
+    obsamp[obsamp.==Inf] .= NaN
+    # Ascl_stm_A = 1.0 # linear by default for now
+    # Ascl_stm_B = 0.0
     # Ascl_stm_A = -0.7346 # 2b no hough
     # Ascl_stm_B = 0.01238
     # # Linear a + bx
+    # Ascl_cst_A = 1.99 # 2b no hough
+    # Ascl_cst_B = 0.08
+    # Linear a + bx
+    # obsamp = (Ascl_cst_A .+ Ascl_cst_B.*obsamp).*obsamp
     # obsamp = (Ascl_stm_A .+ Ascl_stm_B.*prdamp).*prdamp
     # # Power ax^b
     # Ascl_stm_A = 5.48594 # linear by default for now
     # Ascl_stm_B = -0.9932
     # Ascl_stm_A = 5.38834 # linear by default for now
     # Ascl_stm_B = -0.98828
-    obsamp = prdamp.^2
-    obsamp = log10.(obsamp).*10
-    obsamp = (Ascl_stm_A .+ Ascl_stm_B.*obsamp).*obsamp
+    # obsamp = prdamp.^2
+    # obsamp = log10.(obsamp).*10
+    # obsamp = (Ascl_stm_A .+ Ascl_stm_B.*obsamp).*obsamp
     # # Log a + b log(x)
     # obsamp = (Ascl_stm_A .+ Ascl_stm_B.*log.(prdamp)).*prdamp
     return obsamp
@@ -665,6 +724,13 @@ if !go_to_results
             print("\n")
         end
 
+        # convert to amplitude instead of velocity
+        if vel2amp
+            for k = 1:lastindex(spectD)
+                spectD[k] = spectD[k]./(spectF[k].*(2*pi))
+            end
+        end
+
         # get the 1D power
         spectP0 = []
         if !isempty(baro_f_range)
@@ -677,7 +743,8 @@ if !go_to_results
             else
                 global ridx = findall(plot_f_range[1] .<= spectF[k] .<= plot_f_range[2])
             end
-            push!(spectP0,log10.(dropdims(sum(spectD[k][ridx,:],dims=1),dims=1)))
+            # push!(spectP0,log10.(dropdims(sum(spectD[k][ridx,:],dims=1),dims=1))) # old non trap version
+            push!(spectP0, log10.(map(x->lf.trapsum(spectF[k][ridx],vec(spectD[k][ridx,x])),1:lastindex(spectT[k]))))
             #push!(spectP0,dropdims(mean(spectD[k][ridx,:],dims=1),dims=1))
             if !isempty(baro_f_range) # recalc ridx
                 ridx = findall(baro_f_range[1] .<= spectF[k] .<= baro_f_range[2])
@@ -893,6 +960,10 @@ if !go_to_results
         bathy # uses time
         speed # uses time
         azim # uses time
+        r50 # uses time, radius of 50kt wind (avg or median of quadrants)
+        rmw # radius of max wind
+        rmwscaled # is this a real number or a scaled one?
+
     end
     print("Reading in HURDAT data\n")
     # setup geodesic
@@ -904,9 +975,9 @@ if !go_to_results
         for ln in eachline(f)
             linenumtmp += 1
             if length(ln) == 37 # if line is identifier, new entry
-                push!(Hall,Hurdat([],[],[],[],[],[],[],[],[]))
+                push!(Hall,Hurdat([],[],[],[],[],[],[],[],[],[],[],[]))
                 Hall[end].name = string(ln[1:8],"_",ln[findlast(" ",ln[10:28])[end]+10:28])
-            elseif length(ln)==120 || length(ln)==125 # 125 for new format
+            elseif length(ln)==120 || length(ln)==125 # 125 for new format with RMW
                 # if line is a data line
                 ttmp = Dates.DateTime(
                             parse(Int64, ln[1:4]), # year
@@ -933,6 +1004,38 @@ if !go_to_results
                         deg2rad.((Hall[end].lon[end], Hall[end].lat[end], lontmp, lattmp))..., Ga, Gf)
                     spdtmp = dtmp/(Dates.value(convert(Dates.Millisecond,ttmp-Hall[end].time[end]))/1000) # speed in m/s
                 end
+                # get the RMW
+                tmpRMW = -999
+                scaledRMW = true # by default assume RMW is not directly reported
+                if length(ln)==125 # check if RMW exists
+                    if parse(Float64, ln[122:125]) != -999 # check for -999
+                        # read RMW value
+                        scaledRMW = false # indicate that value was directly reported
+                        tmpRMW = parse(Float64, ln[122:125]) # in nautical miles
+                    end
+                end
+                # get R50
+                tmpR50 = [
+                    parse(Float64, ln[74:77]), # 50kt winds radii NE
+                    parse(Float64, ln[80:83]), # SE
+                    parse(Float64, ln[86:89]), # SW
+                    parse(Float64, ln[92:95]) # NW
+                ]
+                # if sum(tmpR50.==-999)==0 # check if data is missing or 0 (max wind is <50)
+                #     if scaledRMW # fill RMW if available
+                #         # scale RMW if needed
+                #         tmpRMW = mean(tmpR50)*0.23
+                #     end
+                # end
+                if scaledRMW | ignoreRMW # fill RMW if available
+                    if constantRMW
+                        tmpRMW = 1
+                    else
+                        # scale RMW if needed
+                        tmpRMW = 100 .* (1 ./wtmp) .* 30
+                        # based on very highest wind being 100kts and having a radius of 30km
+                    end
+                end
                 ilat = argmin(abs.(LAT.-lattmp))
                 ilon = argmin(abs.(LON.-lontmp))
                 bathtmp = ELV[ilat,ilon]
@@ -944,6 +1047,9 @@ if !go_to_results
                 push!(Hall[end].speed, spdtmp)
                 push!(Hall[end].azim, rad2deg(atmp))
                 push!(Hall[end].bathy, bathtmp)
+                push!(Hall[end].r50, tmpR50) # vector of 4 for the quadrants
+                push!(Hall[end].rmw, tmpRMW) # average (median?) of the quadrants * 0.23
+                push!(Hall[end].rmwscaled, scaledRMW) # is this a scaled version or a reorted one?
             else
                 error(string("Unexpected line length of ",length(ln),
                                 " encountered at line ",linenumtmp))
@@ -1156,7 +1262,7 @@ if !go_to_results
             end
             print("\n\n")
         end
-    end
+    end 
 
     ## CALCULATE AND REMOVE SEASONAL TREND
     global spectP_seasonal = []
@@ -1165,37 +1271,96 @@ if !go_to_results
     if !isempty(baro_f_range)
         global spectPbaro1 = []
     end
-    if seasonal_avg_window==Dates.Day(0)
-        spectP1 = deepcopy(spectP0)
-        for k = 1:lastindex(spectP0)
-            push!(spectP_seasonal,fill!(Vector{Float64}(undef,length(spectP1[k])),NaN))
-            push!(spectP_seasonal_DC,NaN)
+    if seasonal_avg_fourier > 0 # decompose fourier coefficients and remove
+        for k = 1:lastindex(spectD)
+            Tyear = Dates.value.(spectT[k])/(1000*60*60*24*DaysInYear)# time in years
+            if seasonal_avg_window==Dates.Day(0)
+                Dfilt = spectP0[k]
+            else
+                # get median based on window
+                medwindyear = Dates.value(Dates.Day(seasonal_avg_window))/DaysInYear
+                Nmedwind = convert(Int,round(medwindyear/mode(diff(Tyear))))
+                Dfilt = lf.movingmedian(spectP0[k],Nmedwind,0.25)
+            end
+            gidx = findall(.!isnan.(Dfilt))
+            # setup and get fourier
+            fidx = [] # harmonic index
+            ak = []; bk = [] # coefficients
+            harmonicD = zeros(length(Tyear))
+            for j = 1:seasonal_avg_fourier
+                append!(fidx,j) # in cycles per year
+                # set basis functions
+                sbase = sin.(2π * j * Tyear)
+                cbase = cos.(2π * j * Tyear)
+                # get coefficients
+                append!(ak, sum(sbase[gidx].*Dfilt[gidx])/(length(gidx)/2))
+                append!(bk, sum(cbase[gidx].*Dfilt[gidx])/(length(gidx)/2))
+                # reconstruct
+                harmonicD .+= ak[end] * sbase .+ bk[end] * cbase
+            end
+            # estimate spectra to check
+            lsp = lombscargle(Tyear[gidx],spectP0[k][gidx])
+            (fftf, fftD) = freqpower(lsp)
+            # trim down to less than 10 cycles
+            gidx = findfirst(fftf.>=10)
+            fftf=fftf[1:gidx]; fftD=fftD[1:gidx]
+            # plot
+            hpf1 = plot(fftf[2:end],log10.(real.(fftD[2:end]).^2),xlim=(0,5),label="",
+                xlabel="cycles/year",ylabel="log PSD",title="Harmonics")
+            didx = 1:10:lastindex(Tyear)
+            hpf2 = scatter(Tyear[didx],spectP0[k][didx],ms=1,mc=:black,
+                title="Harmonics Fit",label="",ylabel="Amplitude",
+                ylim=(percentile(filter(!isnan,spectP0[k][didx]),0.01),
+                    percentile(filter(!isnan,spectP0[k][didx]),99.9)))
+            plot!(hpf2,Tyear[didx],Dfilt[didx],
+                lw=2,label=string(seasonal_avg_window,"rolling median"))
+            plot!(hpf2,Tyear[didx],harmonicD[didx].+median(filter(!isnan,spectP0[k])),
+                lw=2,label=string(seasonal_avg_fourier,"-harmonic fit"))
+            hpf3 = scatter(Tyear[didx],spectP0[k][didx].-harmonicD[didx],
+                ms=1,mc=:black,title="Harmonics Removed",label="",ylabel="Amplitude",
+                ylim=(percentile(filter(!isnan,spectP0[k]),0.01),
+                    percentile(filter(!isnan,spectP0[k]),99.9)))
+            hpf = plot(hpf1,hpf2,hpf3,layout=grid(3,1),size=(1000,1000))
+            savefig(hpf,string(cDataOut,"Harmonics.pdf"))
+            # save original and subtract
+            newD = spectP0[k] .- harmonicD
+            push!(spectP_seasonal,harmonicD)
+            push!(spectP_seasonal_DC,median(filter(!isnan,spectP0[k])))
+            push!(spectP1,newD)
         end
-    else
-        # rolling average
-        for k = 1:lastindex(spectP0)
-            # convert window size from time to points
-            seasonal_avg_window_pts = round(Dates.value(convert(Dates.Millisecond,seasonal_avg_window)) / 
-                Dates.value(convert(Dates.Millisecond,mean(diff(spectT[k])))))
-            # compute rolling average
-            tmp_avg = movmean(spectP0[k],seasonal_avg_window_pts)
-            # get DC offset (we want to take this out of the seasonal trend)
-            tmp_DC = mean(filter(!isnan,tmp_avg))
-            # subtract trend 
-            tmp_subt = spectP0[k] .- tmp_avg .+ tmp_DC
-            # save values
-            push!(spectP_seasonal,tmp_avg)
-            push!(spectP_seasonal_DC,tmp_DC)
-            push!(spectP1,tmp_subt)
-            if !isempty(baro_f_range)
+    else 
+        if seasonal_avg_window==Dates.Day(0)
+            spectP1 = deepcopy(spectP0)
+            for k = 1:lastindex(spectP0)
+                push!(spectP_seasonal,fill!(Vector{Float64}(undef,length(spectP1[k])),NaN))
+                push!(spectP_seasonal_DC,NaN)
+            end
+        else
+            # rolling average
+            for k = 1:lastindex(spectP0)
+                # convert window size from time to points
+                seasonal_avg_window_pts = round(Dates.value(convert(Dates.Millisecond,seasonal_avg_window)) / 
+                    Dates.value(convert(Dates.Millisecond,mean(diff(spectT[k])))))
                 # compute rolling average
-                tmp_avg = movmean(spectPbaro0[k],seasonal_avg_window_pts)
+                tmp_avg = movmean(spectP0[k],seasonal_avg_window_pts)
                 # get DC offset (we want to take this out of the seasonal trend)
                 tmp_DC = mean(filter(!isnan,tmp_avg))
                 # subtract trend 
-                tmp_subt = spectPbaro0[k] .- tmp_avg .+ tmp_DC
+                tmp_subt = spectP0[k] .- tmp_avg .+ tmp_DC
                 # save values
-                push!(spectPbaro1,tmp_subt)
+                push!(spectP_seasonal,tmp_avg)
+                push!(spectP_seasonal_DC,tmp_DC)
+                push!(spectP1,tmp_subt)
+                if !isempty(baro_f_range)
+                    # compute rolling average
+                    tmp_avg = movmean(spectPbaro0[k],seasonal_avg_window_pts)
+                    # get DC offset (we want to take this out of the seasonal trend)
+                    tmp_DC = mean(filter(!isnan,tmp_avg))
+                    # subtract trend 
+                    tmp_subt = spectPbaro0[k] .- tmp_avg .+ tmp_DC
+                    # save values
+                    push!(spectPbaro1,tmp_subt)
+                end
             end
         end
     end
@@ -1210,29 +1375,33 @@ if !go_to_results
             if sum(map(x->length(baroD0[x])==length(spectT[x]),1:lastindex(baroD0)))!=length(baroD0)
                 error(string("The 'baroD0' variable read from ",baro_save_file," does not match 'spectT' in memory!\n"))
             end
-        elseif isfile(METAR_jld_file) # try using the jld file from METAR
-            # load up data
-            tmpvar = load(METAR_jld_file)
-            tmpbaro = tmpvar["baro"] # in mb
-            tmptime = tmpvar["time"]
-            print(string("Read ",length(tmpbaro)," samples from station ",tmpvar["sta"],"\n"))
-            # initialize baroD0
-            baroD0 = deepcopy(spectP0)
-            baroD0 = map(x->fill!(baroD0[x],NaN),1:lastindex(baroD0))
-            for k=1:lastindex(baroD0) # station names will not match, so do for all spectT stations
-                # interpolate onto spectT
-                tidx = findall(minimum(tmptime) .<= spectT[k] .<= maximum(tmptime))
-                targetT = convert.(Float64,Dates.value.(spectT[k][tidx] .- minimum(tmptime)))
-                currentT = convert.(Float64,Dates.value.(tmptime .- minimum(tmptime)))
-                # figure out if its non-linear or if there are repeats
-                gidx = findall(.!isnan.(tmpbaro))
-                itpD = LinearInterpolation(currentT[gidx], tmpbaro[gidx])
-                newD = itpD(targetT)
-                # convert to pascals (1mb = 100Pa) and savce
-                baroD0[k][tidx] = newD.*100
+        elseif !isempty(METAR_jld_file)
+            if isfile(METAR_jld_file) # try using the jld file from METAR
+                # load up data
+                tmpvar = load(METAR_jld_file)
+                tmpbaro = tmpvar["baro"] # in mb
+                tmptime = tmpvar["time"]
+                print(string("Read ",length(tmpbaro)," samples from station ",tmpvar["sta"],"\n"))
+                # initialize baroD0
+                baroD0 = deepcopy(spectP0)
+                baroD0 = map(x->fill!(baroD0[x],NaN),1:lastindex(baroD0))
+                for k=1:lastindex(baroD0) # station names will not match, so do for all spectT stations
+                    # interpolate onto spectT
+                    tidx = findall(minimum(tmptime) .<= spectT[k] .<= maximum(tmptime))
+                    targetT = convert.(Float64,Dates.value.(spectT[k][tidx] .- minimum(tmptime)))
+                    currentT = convert.(Float64,Dates.value.(tmptime .- minimum(tmptime)))
+                    # figure out if its non-linear or if there are repeats
+                    gidx = findall(.!isnan.(tmpbaro))
+                    itpD = LinearInterpolation(currentT[gidx], tmpbaro[gidx])
+                    newD = itpD(targetT)
+                    # convert to pascals (1mb = 100Pa) and savce
+                    baroD0[k][tidx] = newD.*100
+                end
+                # save baro_jld
+                save(baro_save_file,"baroD0",baroD0)
+            else
+                error("METAR_jld_file is not a known file!")
             end
-            # save baro_jld
-            save(baro_save_file,"baroD0",baroD0)
         else # read from sac
             baroD0 = deepcopy(spectP0)
             baroD0 = map(x->fill!(baroD0[x],NaN),1:lastindex(baroD0))
@@ -1411,7 +1580,7 @@ if !go_to_results
             gidx = findall(time1[1].<=time0.<=time1[end])
             barotmp = itp_baro(rawtime0[gidx])
             # do the same for scaling in new windows with time shifted baro
-            print(string("Finding best barometric scalingfor ",length(twind_scl_starts)," windows:\n"))
+            print(string("Finding best barometric scaling for ",length(twind_scl_starts)," windows:\n"))
             for i in ProgressBar(1:lastindex(twind_scl_starts))
                 # get window
                 tmpidx_baro = findall(twind_scl_starts[i].<=time0.<=twind_scl_starts[i]+baro_scl_wndw_size)
@@ -1455,6 +1624,51 @@ if !go_to_results
                 shape=:star5,ms=10,mc=:yellow,msc=:black,label=string("Min. Corr = ",
                     Dates.value.(convert.(Dates.Minute,time_lags[minidx]))./60," hrs"))
             savefig(hp_correlation_all,string(cDataOut,"barometric_correlations.pdf"))
+            # make this as a density plot
+            corrbins = range(
+                    minimum(filter(!isnan,correlations_all_k)),
+                    maximum(filter(!isnan,correlations_all_k)),100)
+            corrdensity = zeros(length(time_lags), length(corrbins)-1)
+            for i = 1:lastindex(time_lags)
+                for j = 2:lastindex(corrbins)
+                    # get indices (search)
+                    gidx = corrbins[j-1] .<= correlations_all_k[i,:] .<= corrbins[j]
+                    # place things
+                    corrdensity[i,j-1] = sum(gidx)
+                end
+            end
+            hp_correlation_dens = heatmap(
+                Dates.value.(convert.(Dates.Minute,time_lags))./60,
+                corrbins[2:end].-mode(diff(corrbins))/2,
+                corrdensity',label="",xlabel="Hours",ylabel="Corr.")
+            plot!(hp_correlation_dens,
+                Dates.value.(convert.(Dates.Minute,time_lags))./60,
+                map(x->mean(filter(!isnan,correlations_all_k[x,:])),1:lastindex(time_lags)),
+                lc=:black,lw=2,label="avg")
+            minidx = argmin(map(x->mean(filter(!isnan,correlations_all_k[x,:])),1:lastindex(time_lags)))
+            scatter!(hp_correlation_dens,
+                [Dates.value.(convert.(Dates.Minute,time_lags[minidx]))./60],
+                [mean(filter(!isnan,correlations_all_k[minidx,:]))],
+                shape=:star5,ms=10,mc=:yellow,msc=:black,label=string("Min. Corr = ",
+                    Dates.value.(convert.(Dates.Minute,time_lags[minidx]))./60," hrs"))
+            savefig(hp_correlation_dens,string(cDataOut,"barometric_correlations_density.pdf"))
+            # now with the median
+            hp_correlation_dens = heatmap(
+                Dates.value.(convert.(Dates.Minute,time_lags))./60,
+                corrbins[2:end].-mode(diff(corrbins))/2,
+                corrdensity',label="",xlabel="Hours",ylabel="Corr.")
+            plot!(hp_correlation_dens,
+                Dates.value.(convert.(Dates.Minute,time_lags))./60,
+                map(x->median(filter(!isnan,correlations_all_k[x,:])),1:lastindex(time_lags)),
+                lc=:black,lw=2,label="median")
+            minidx = argmin(map(x->median(filter(!isnan,correlations_all_k[x,:])),1:lastindex(time_lags)))
+            scatter!(hp_correlation_dens,
+                [Dates.value.(convert.(Dates.Minute,time_lags[minidx]))./60],
+                [median(filter(!isnan,correlations_all_k[minidx,:]))],
+                shape=:star5,ms=10,mc=:yellow,msc=:black,label=string("Min. Corr = ",
+                    Dates.value.(convert.(Dates.Minute,time_lags[minidx]))./60," hrs"))
+            savefig(hp_correlation_dens,string(cDataOut,"barometric_correlations_density_median.pdf"))
+            # time series plots
             hp_time_lag = plot(twind_corr_starts.+(baro_corr_wndw_size/2),
                 best_time_lag_k,label="",title="Best Time Lags (hrs)",)
             hp_correlation = plot(twind_corr_starts.+(baro_corr_wndw_size/2),
@@ -1467,8 +1681,51 @@ if !go_to_results
             plot(hp_scaling,twind_scl_starts.+(baro_corr_wndw_size/2),ones(length(twind_scl_starts)),lc=:black)
             hp_l2 = plot(twind_scl_starts.+(baro_corr_wndw_size/2),
                 scaled_l2_k,label="",title="L2",)
-            hp_all = plot(hp_time_lag,hp_correlation,hp_scaling,hp_l2,layout=grid(4,1))
+            hp_all = plot(hp_time_lag,hp_correlation,hp_scaling,hp_l2,layout=grid(4,1),size=(1000,1000),right_margin = 15mm)
             savefig(hp_all, string(cDataOut,"baro_fit_time_dependence.pdf"))
+            # histograms 
+            hp1 = histogram(best_time_lag_k,label="",title="Time Lag")
+            hp2 = histogram(time_lag_correlation_k,label="",title="Correlation")
+            hp3 = histogram(best_baro_scaling_k,label="",title="Scaling")
+            hpall = plot(hp1,hp2,hp3,layout=grid(1,3),size=(1800,600),bottom_margin = 15mm)
+            savefig(hpall,string(cDataOut,"baro_fit_hists.pdf"))
+            # plot the fourier estimate of the baro scaling and lag dependence
+            twind_day = Dates.value.(twind_corr_starts.+(baro_corr_wndw_size/2).-twind_corr_starts[1])./(1000*60*60*24)
+            gidx = findall(.!isnan.(best_time_lag_k))
+            lsp = lombscargle(twind_day[gidx],best_time_lag_k[gidx].-mean(filter(!isnan,best_time_lag_k)))
+            (fftf, fftD) = freqpower(lsp)
+            gidx = findfirst(fftf.>=1) # only cycles less than 1 (less than daily)
+            fftf=fftf[1:gidx]; fftD=fftD[1:gidx]
+            hp_timef = plot(1 ./(fftf[2:end]),real.(fftD[2:end]).^2,label="",
+                xlabel="period (days)",ylabel="PSD",title="Time Lag Fourier",
+                xaxis=:log,minorgrid=true,xlim=(1,1000))
+            gidx = findall(.!isnan.(time_lag_correlation_k))
+            lsp = lombscargle(twind_day[gidx],time_lag_correlation_k[gidx].-mean(filter(!isnan,time_lag_correlation_k)))
+            (fftf, fftD) = freqpower(lsp)
+            gidx = findfirst(fftf.>=1) # only cycles less than 1 (less than daily)
+            fftf=fftf[1:gidx]; fftD=fftD[1:gidx]
+            hp_corrf = plot(1 ./(fftf[2:end]),real.(fftD[2:end]).^2,label="",
+                xlabel="period (days)",ylabel="PSD",title="Correlation Fourier",
+                xaxis=:log,minorgrid=true,xlim=(1,1000))
+            twind_day = Dates.value.(twind_scl_starts.+(baro_corr_wndw_size/2).-twind_scl_starts[1])./(1000*60*60*24)
+            gidx = findall(.!isnan.(best_baro_scaling_k))
+            lsp = lombscargle(twind_day[gidx],best_baro_scaling_k[gidx].-mean(filter(!isnan,best_baro_scaling_k)))
+            (fftf, fftD) = freqpower(lsp)
+            gidx = findfirst(fftf.>=1) # only cycles less than 1 (less than daily)
+            fftf=fftf[1:gidx]; fftD=fftD[1:gidx]
+            hp_scalef = plot(1 ./(fftf[2:end]),real.(fftD[2:end]).^2,label="",
+                xlabel="period (days)",ylabel="PSD",title="Scaling Fourier",
+                xaxis=:log,minorgrid=true,xlim=(1,1000))
+            gidx = findall(.!isnan.(scaled_l2_k))
+            lsp = lombscargle(twind_day[gidx],scaled_l2_k[gidx].-mean(filter(!isnan,scaled_l2_k)))
+            (fftf, fftD) = freqpower(lsp)
+            gidx = findfirst(fftf.>=1) # only cycles less than 1 (less than daily)
+            fftf=fftf[1:gidx]; fftD=fftD[1:gidx]
+            hp_l2f = plot(1 ./(fftf[2:end]),real.(fftD[2:end]).^2,label="",
+                xlabel="period (days)",ylabel="PSD",title="L2 Fourier",
+                xaxis=:log,minorgrid=true,xlim=(1,1000))
+            hp_all = plot(hp_timef,hp_corrf,hp_scalef,hp_l2f,layout=grid(4,1),size=(1000,1000))
+            savefig(hp_all, string(cDataOut,"baro_fit_time_dependence_freq.pdf"))
             # demean barotmp
             barotmp = barotmp .- mean(filter(!isnan,barotmp))
             # interpolate the the scalings
@@ -1583,8 +1840,10 @@ if !go_to_results
                                 )
                             )
                     ),
-                    ylim = (percentile(filter(!isnan,spectP2[i]),0.5),
-                        percentile(filter(!isnan,spectP2[i]),99.5)),
+                    # ylim = (percentile(filter(!isnan,spectP2[i]),0.5),
+                    #     percentile(filter(!isnan,spectP2[i]),99.5)),
+                    ylim = (percentile(filter(!isnan,spectP1[i]),0.1),
+                        percentile(filter(!isnan,spectP1[i]),99.9)),
                 )
                 # aggregate plots
                 global hpRAWall = plot(
@@ -1618,6 +1877,10 @@ if !go_to_results
                     label = "Raw",
                     lc = :black,
                     size = (1800,400),
+                    ylim=(
+                        percentile(filter(!isnan,baroD0[i]),0.1),
+                        percentile(filter(!isnan,baroD0[i]),99.9),
+                    )
                 )
                 plot!(hpRAWpwrbaro,spectT[i],baroD_longterm[i],lc=:red,label="Long Term")
                 global hpRAWpwr2baro = plot(
@@ -1627,6 +1890,10 @@ if !go_to_results
                     label = "-Long Term",
                     lc = :black,
                     size = (1800,400),
+                    ylim=(
+                        percentile(filter(!isnan,baroD1[i]),0.1),
+                        percentile(filter(!isnan,baroD1[i]),99.9),
+                    )
                 )
                 global hpRAWpwr3baro = plot(
                     baro_corr_windows[i],
@@ -1640,8 +1907,8 @@ if !go_to_results
                 ax2=twinx()
                 plot!(ax2,baro_scl_windows[i],best_baro_scaling[i],label = "Scaling",
                     legend = :topleft,lc = :red, ylim=(
-                        percentile(filter(!isnan,best_baro_scaling[i]),0.5),
-                        percentile(filter(!isnan,best_baro_scaling[i]),99.5),
+                        percentile(filter(!isnan,best_baro_scaling[i]),0.1),
+                        percentile(filter(!isnan,best_baro_scaling[i]),99.9),
                     )
                 )
                 global hpRAWpwr4baro = plot(
@@ -1651,6 +1918,10 @@ if !go_to_results
                     label = "Scaled and Shifted",
                     lc = :black,
                     size = (1800,400),
+                    ylim=(
+                        percentile(filter(!isnan,baroD_scaled[i]),0.1),
+                        percentile(filter(!isnan,baroD_scaled[i]),99.9),
+                    )
                 )
                 if !isempty(baro_f_range)
                     plot!(hpRAWpwr4baro,
@@ -1823,6 +2094,82 @@ if !go_to_results
                     end        
                 end
             end
+            if makeAnnualHeatmaps
+                starttimes = spectT[i][1]:Dates.Month(12):spectT[i][end]
+                for j in ProgressBar(1:lastindex(starttimes)-1)  
+                    # get desired x bounds
+                    global tmpstime = starttimes[j] # start time
+                    global tmpetime = starttimes[j+1] # end time
+                    tmpetime2 = tmpetime+Dates.Millisecond(
+                        convert(Int,round(xlim_coef*Dates.value(tmpetime-tmpstime)))
+                    )
+                    # modify xlims wih plot!
+                    local tidx = findall(tmpstime .<= spectT[i] .<= tmpetime)
+                    if !isempty(tidx)
+                        global hpRAWspect = heatmap(
+                            spectT[i][tidx],
+                            spectF[i][ridx],
+                            log10.(spectD[i][ridx,tidx]),
+                            title = string("Log Spect for ",names[i]),
+                            size = (1800,400),
+                        )
+                        if sum(.!isnan.(spectD[i][ridx,tidx]))>0
+                            plot!(hpRAWspect,
+                                clim = (
+                                    minimum(filter(!isnan,log10.(spectD[i][ridx,tidx][:])))+0.1.*(
+                                        percentile(filter(!isnan,log10.(spectD[i][ridx,tidx][:])),99)-
+                                        minimum(filter(!isnan,log10.(spectD[i][ridx,tidx][:])))
+                                    ), 
+                                    percentile(filter(!isnan,log10.(spectD[i][ridx,tidx][:])),99)
+                                )
+                            )
+                        end
+                        plot!(hpRAWpwr, xlims=(tmpstime, tmpetime2))
+                        plot!(hpRAWpwr2, xlims=(tmpstime, tmpetime2))
+                        if use_baro
+                            plot!(hpRAWpwr3, xlims=(tmpstime, tmpetime2))
+                            # aggregate
+                            hpRAWall = plot(
+                                hpRAWspect,
+                                hpRAWpwr, hpRAWpwr2, hpRAWpwr3,
+                                layout = grid(4,1),
+                                size = (1800,1800),
+                            )
+                        else
+                            # aggregate
+                            hpRAWall = plot(
+                                hpRAWspect,
+                                hpRAWpwr, hpRAWpwr2,
+                                layout = grid(3,1),
+                                size = (1800,1600),
+                            )
+                        end
+                        if use_baro
+                            # do for baro
+                            plot!(hpRAWpwrbaro, xlims=(tmpstime, tmpetime2))
+                            plot!(hpRAWpwr2baro, xlims=(tmpstime, tmpetime2))
+                            plot!(hpRAWpwr3baro, xlims=(tmpstime, tmpetime2))
+                            plot!(hpRAWpwr4baro, xlims=(tmpstime, tmpetime2))
+                            hpRAWallbaro = plot(
+                                hpRAWpwrbaro, hpRAWpwr2baro, hpRAWpwr3baro, hpRAWpwr4baro,
+                                layout = grid(4,1),
+                                size = (1800,1800),
+                            )
+                        end
+                        # check Hidx directory
+                        if !isdir(string(cDataOut,"heatmaps/annual/"))
+                            mkdir(string(cDataOut,"heatmaps/annual/"))
+                        end
+                        # write out
+                        savefig(hpRAWall, string(cDataOut,"heatmaps/annual/",
+                            Dates.format(tmpstime,"yyyymmdd"),"_",Dates.format(tmpetime,"yyyymmdd"),"_",names[i],"_seis.pdf"))
+                        if use_baro
+                            savefig(hpRAWallbaro, string(cDataOut,"heatmaps/annual/",
+                                Dates.format(tmpstime,"yyyymmdd"),"_",Dates.format(tmpetime,"yyyymmdd"),"_",names[i],"_baro.pdf"))
+                        end
+                    end        
+                end
+            end
             if i==1
                 print(names[i])
             else
@@ -1872,6 +2219,7 @@ if !go_to_results
             dstnce_sta = [] # single station distance data (by storm)
             azmth_sta = [] # single station azimuth data
             wndspd_sta = []
+            rmw_sta = []
             cst_ampl_sta = []
             stm_ampl_sta = []
             ocean_path_len_sta = []
@@ -2067,8 +2415,9 @@ if !go_to_results
                 else
                     push!(wndspd_sta, H[Hidx[j]].maxwind .* 0.514444) # convert to m/s
                 end
-                push!(cst_ampl_sta, Ascl_cst_func(wndspd_sta[j],wndspd_sta[j]))
-                push!(stm_ampl_sta, Ascl_stm_func(wndspd_sta[j],wndspd_sta[j]))
+                push!(rmw_sta, H[Hidx[j]].rmw .* 1852) # grab wind radius in nautical miles and convert to m
+                push!(cst_ampl_sta, Ascl_cst_func(wndspd_sta[j],wndspd_sta[j],rmw_sta[j],ocean_path_len_sta[j]))
+                push!(stm_ampl_sta, Ascl_stm_func(wndspd_sta[j],wndspd_sta[j],rmw_sta[j],ocean_path_len_sta[j]))
             end
             # compute the sea state / swell parameters
             print(string("  Calculating Sea-States for ",
@@ -2313,8 +2662,8 @@ if !go_to_results
     end
     print("\n")
 
-     ## DEFINE PARAMETER SPACE FIT FUNCTION SEARCH
-     function paramspacefit(xdat,ydat,angles,Nrbins,linewidth,N_trends,distweight,Nweight)
+    ## DEFINE PARAMETER SPACE FIT FUNCTION SEARCH
+    function paramspacefit(xdat,ydat,angles,Nrbins,linewidth,N_trends,distweight,Nweight)
         # outputs (int, slp, fit, hp = )
         # leave plot title as empty string to not generate any plots
         # xdat and ydat and fit are vectors representing the number of trends
@@ -2400,6 +2749,13 @@ if !go_to_results
                 end
             end
         end
+        # if we've still failed try the brute force arg max
+        if isempty(fit)
+            cartidx = argmax(Mval)
+            push!(fit_theta,angles[cartidx[1]])
+            push!(fit_r,rbins[cartidx[2]])
+            push!(fit,Mval[cartidx])
+        end
         sidx = sortperm(fit,rev=true)
         fit = fit[sidx]
         fit_r = fit_r[sidx]
@@ -2423,6 +2779,35 @@ if !go_to_results
         hp = plot(hp1,hp2,hp3,layout=grid(3,1),size=(600,1000))
         return int, slp, fit, hp
     end
+
+    ## DEFINE RLM FIT THINGY
+    function rlmfit(X,y,trendmode)
+        X = convert.(Float64,X)
+        if trendmode=="quantile"
+            (coefs, res) = reweighted_lsqr(X,vec(y),
+                RobustLeastSquares.L1Estimator();refit=true) # L1 (least absolute deviations)
+        elseif trendmode=="l2"
+            (coefs, res) = reweighted_lsqr(X,vec(y),
+                RobustLeastSquares.L2Estimator();refit=true) # L2
+        else
+            error("!!!'trendmode'' not recognized for IRLS try ''l2'' or ''quantile''!!!")
+        end
+        residuals = X*coefs .- y
+        dof = length(y)-2
+        residvar = sum(residuals.^2)/dof
+        covB = residvar*inv(X'*X)
+        stda = sqrt(covB[2,2])
+        stdb = sqrt(covB[1,1])
+        return coefs[2], coefs[1], stda, stdb
+    end
+
+    # This is the routine to use rlmfit
+    # # do linear fit for old / new and primary / secondary
+    # ogidx = findall(.!isnan.(oldDfilt))
+    # ngidx = findall(.!isnan.(newDfilt))
+    # olda, oldb, oldastd, oldbstd = rlmfit(
+    #     [reshape(oldTyear[ogidx],length(ogidx),1) ones(length(ogidx))],
+    #     oldDfilt[ogidx],trendmode)
         
     ## FIND BEST FITTING Vwind2Vphase BASED ON POWER AND COAST MER ARRIVAL TIME
     print("Fitting Storms to Observations and Plotting:\n ")
@@ -2459,6 +2844,9 @@ if !go_to_results
     dlwest_all = []
     slat_all = []
     slon_all = []
+    rmw_all = []
+    rmwscld_all = []
+    r50_all =[]
     for k = 1:lastindex(names)
         print(string("  Processing: ",names[k])," - Storm: ")
         for j = 1:lastindex(Hidx)
@@ -2511,7 +2899,13 @@ if !go_to_results
                             )
                             DC_tmp = DC_tmp[1]; scl_tmp = scl_tmp[1]; #fit_tmp = 1/fit_tmp[1]
                     else
-                        global (DC_tmp, scl_tmp) = linear_fit(P_prd_stm_coarse[gidx],P_obs_coarse[gidx])
+                        if userlmfit
+                            global DC_tmp, scl_tmp, DC_std, scl_std = rlmfit(
+                                [reshape(P_prd_stm_coarse[gidx],length(gidx),1) ones(length(gidx))],
+                                P_obs_coarse[gidx],trendmode)
+                        else
+                            global (DC_tmp, scl_tmp) = linear_fit(P_prd_stm_coarse[gidx],P_obs_coarse[gidx])
+                        end
                     end
                     global fit_tmp = sum((P_obs_coarse[gidx] .- (DC_tmp .+ scl_tmp.*P_prd_stm_coarse[gidx])).^2)
                 else # continue with the interpolated data
@@ -2525,7 +2919,13 @@ if !go_to_results
                             )
                         DC_tmp = DC_tmp[1]; scl_tmp = scl_tmp[1]; #fit_tmp = 1/fit_tmp[1]
                     else
-                        global (DC_tmp, scl_tmp) = linear_fit(P_prd_stm[gidx],P_obs[gidx])     
+                        if userlmfit
+                            global DC_tmp, scl_tmp, DC_std, scl_std = rlmfit(
+                                [reshape(P_prd_stm[gidx],length(gidx),1) ones(length(gidx))],
+                                P_obs[gidx],trendmode)
+                        else
+                            global (DC_tmp, scl_tmp) = linear_fit(P_prd_stm[gidx],P_obs[gidx])
+                        end   
                     end
                     global fit_tmp = sum((P_obs[gidx] .- (DC_tmp .+ scl_tmp.*P_prd_stm[gidx])).^2)
                 end
@@ -2722,7 +3122,8 @@ if !go_to_results
                                 if wghtByPoints
                                     tmpfit = tmpfit * (1/length(gidx)) # normalize by number of points
                                 end
-                                tmpfit = tmpfit *(1+(1-ptsusedratio)) # multiply by the fraction of unused points (more unused points => higher score)
+                                tmpfit = tmpfit *(1/ptsusedratio)
+                                # tmpfit = tmpfit *(1+(1-ptsusedratio)) # multiply by the fraction of unused points (more unused points => higher score)
                                 if penalizeForNaNs 
                                     # get nan ratio = (1 - non nan ratio)
                                     nanratio = (1 - length(gidx)/length(tcommon))
@@ -2958,7 +3359,13 @@ if !go_to_results
                                 )
                             DC_tmp = DC_tmp[1]; scl_tmp = scl_tmp[1]; #fit_tmp = 1/fit_tmp[1]
                         else
-                            global (DC_tmp, scl_tmp) = linear_fit(P_prd_cst_coarse[gidx],P_obs_coarse[gidx])
+                            if userlmfit
+                                global DC_tmp, scl_tmp, DC_std, scl_std = rlmfit(
+                                    [reshape(P_prd_cst_coarse[gidx],length(gidx),1) ones(length(gidx))],
+                                    P_obs_coarse[gidx],trendmode)
+                            else
+                                global (DC_tmp, scl_tmp) = linear_fit(P_prd_cst_coarse[gidx],P_obs_coarse[gidx])
+                            end 
                         end
                         global fit_tmp = sum((P_obs_coarse[gidx] .- (DC_tmp .+ scl_tmp.*P_prd_cst_coarse[gidx])).^2)
                     else # continue with the interpolated data
@@ -2972,7 +3379,13 @@ if !go_to_results
                                 )
                             DC_tmp = DC_tmp[1]; scl_tmp = scl_tmp[1]; #fit_tmp = 1/fit_tmp[1]
                         else
-                            global (DC_tmp, scl_tmp) = linear_fit(P_prd_cst[gidx],P_obs[gidx])
+                            if userlmfit
+                                global DC_tmp, scl_tmp, DC_std, scl_std = rlmfit(
+                                    [reshape(P_prd_cst[gidx],length(gidx),1) ones(length(gidx))],
+                                    P_obs[gidx],trendmode)
+                            else
+                                global (DC_tmp, scl_tmp) = linear_fit(P_prd_cst[gidx],P_obs[gidx])
+                            end 
                         end
                         global fit_tmp = sum((P_obs[gidx] .- (DC_tmp .+ scl_tmp.*P_prd_cst[gidx])).^2)
                     end
@@ -3042,6 +3455,9 @@ if !go_to_results
                 append!(best_Vw2Vp_l2_all,best_Vw2Vp_l2[k,j].*ones(length(H[Hidx[j]].bathy)))
                 append!(Hidx_all,Hidx[j].*ones(length(H[Hidx[j]].bathy)))
                 append!(k_all,k.*ones(length(H[Hidx[j]].bathy)))
+                append!(rmw_all,H[Hidx[j]].rmw)
+                append!(r50_all,H[Hidx[j]].r50)
+                append!(rmwscld_all,H[Hidx[j]].rmwscaled)
                 
                 ## MAKE PLOTS
                 if makeHidxPlots
@@ -3238,6 +3654,9 @@ if !go_to_results
         "dlwest_all",dlwest_all,
         "slat_all",slat_all,
         "slon_all",slon_all,
+        "rmw_all",rmw_all,
+        "rmwscld_all",rmwscld_all,
+        "r50_all",r50_all,
         "stormname",stormname, 
         "stormlat",stormlat, 
         "stormlon",stormlon, 
@@ -3277,6 +3696,9 @@ else # read in the results data
     global dlwest_all = tmpvar["dlwest_all"]
     global slat_all = tmpvar["slat_all"]
     global slon_all = tmpvar["slon_all"]
+    global rmw_all = tmpvar["rmw_all"]
+    global rmwscld_all = tmpvar["rmwscld_all"]
+    global r50_all = tmpvar["r50_all"]
     tmpvar = Nothing
 end # this belongs to if !go_to_results
 
@@ -3322,6 +3744,9 @@ if stormRankings
     dlwest_all = dlwest_all[allgidx]
     slat_all = slat_all[allgidx]
     slon_all = slon_all[allgidx]
+    rmw_all = rmw_all[allgidx]
+    rmwscld_all = rmwscld_all[allgidx]
+    r50_all = r50_all[allgidx]
     Hidx_all = Hidx_all[allgidx]
     k_all = k_all[allgidx]
 else
@@ -3407,21 +3832,24 @@ avgdst = deepcopy(avgwndspd)
 wghtdst = deepcopy(avgwndspd)
 avgdlw = deepcopy(avgwndspd) # distnace to land (going west)
 wghtdlw = deepcopy(avgwndspd)
+avglon = deepcopy(avgwndspd)
 for k = 1:lastindex(unique(k_all))
     for j = 1:lastindex(Hidx)
         gidx0 = findall((k_all.==k) .& (Hidx_all.==Hidx[j]))
         if !isempty(gidx0)
             avgwndspd[k,j] = mean(filter(!isnan,wndspd_all[gidx0]))
             maxwndspd[k,j] = maximum(filter(!isnan,wndspd_all[gidx0]))
-            avgdpth[k,j] = mean(filter(!isnan,bathy_all[gidx0]))
+            avgdpth[k,j] = mean(map(x->minimum([x,0]),filter(!isnan,bathy_all[gidx0])))
             gidx = findall(.!isnan.(bathy_all[gidx0]) .& .!isnan.(wndspd_all[gidx0]))
-            wghtdpth[k,j] = mean(bathy_all[gidx0][gidx], weights(convert.(Float64,wndspd_all[gidx0][gidx])))
+            wghtdpth[k,j] = mean(map(x->minimum([x,0]),filter(!isnan,bathy_all[gidx0][gidx])), 
+                weights(convert.(Float64,wndspd_all[gidx0][gidx])))
             avgdst[k,j] = mean(filter(!isnan,dstnce_all[gidx0]))
             gidx = findall(.!isnan.(dstnce_all[gidx0]) .& .!isnan.(wndspd_all[gidx0]))
             wghtdst[k,j] = mean(dstnce_all[gidx0][gidx], weights(convert.(Float64,wndspd_all[gidx0][gidx])))
             avgdlw[k,j] = mean(filter(!isnan,dlwest_all[gidx0]))
             gidx = findall(.!isnan.(dlwest_all[gidx0]) .& .!isnan.(wndspd_all[gidx0]))
             wghtdlw[k,j] = mean(dlwest_all[gidx0][gidx], weights(convert.(Float64,wndspd_all[gidx0][gidx])))
+            avglon = mean(filter(!isnan,slon_all[gidx0]))
         end
     end
 end
@@ -3443,7 +3871,13 @@ savefig(hp,string(cDataOut,"Vw2Vp_fits.pdf"))
 ## DEFINE THE PLOTTING FUNCTIONS
 function linfit(hptmp,xdat,ydat)
     gidx = findall(.!isnan.(xdat) .& .!isnan.(ydat))
-    (alin, blin) = linear_fit(xdat[gidx],ydat[gidx])
+    if userlmfit
+        global alin, blin, astd, bstd = rlmfit(
+            [reshape(xdat[gidx],length(gidx),1) ones(length(gidx))],
+                ydat[gidx],trendmode)
+    else
+        (alin, blin) = linear_fit(xdat[gidx],ydat[gidx])
+    end
     xtmp = range(
         minimum(filter(!isnan,xdat)),
         maximum(filter(!isnan,xdat)),
@@ -3733,19 +4167,47 @@ hp_Amp_stm = histogram2d(
 hp_Amp_stm = linfit(hp_Amp_stm,prd_amp_stm[gidx_stm],obs_amp_stm[gidx_stm])
 hpall = plot(hp_Amp_cst,hp_Amp_stm,layout=grid(2,1),size=(800,1200))
 savefig(hpall,string(cDataOut,"Ampl_pred_obs_hist_fit.pdf"))
-# and again as a scatter
+# and again as a scatter with correlations
 hp_Amp_cst = scatter(
     prd_amp_cst[gidx_cst],obs_amp_cst[gidx_cst],c=:black,ma=0.2,
-    title="Coast MER: Pred vs. Obs Ampl",
+    title=string("Coast MER: Pred vs. Obs Ampl; corr=",cor(prd_amp_cst[gidx_cst],obs_amp_cst[gidx_cst])),
     label="",xlabel="Pred",ylabel="Obs",cbarlabel="Counts")
 hp_Amp_cst = linfit(hp_Amp_cst,prd_amp_cst[gidx_cst],obs_amp_cst[gidx_cst])
 hp_Amp_stm = scatter(
     prd_amp_stm[gidx_stm],obs_amp_stm[gidx_stm],c=:black,ma=0.2,
-    title="Storm MER: Pred vs. Obs Ampl",
+    title=string("Storm MER: Pred vs. Obs Ampl; corr=",cor(prd_amp_stm[gidx_stm],obs_amp_stm[gidx_stm])),
     label="",xlabel="Pred",ylabel="Obs",cbarlabel="Counts")
 hp_Amp_stm = linfit(hp_Amp_stm,prd_amp_stm[gidx_stm],obs_amp_stm[gidx_stm])
 hpall = plot(hp_Amp_cst,hp_Amp_stm,layout=grid(2,1),size=(800,1200))
 savefig(hpall,string(cDataOut,"Ampl_pred_obs_scatter_fit.pdf"))
+# again with color controlled by lon
+hp_Amp_cst = scatter(
+    prd_amp_cst[gidx_cst],obs_amp_cst[gidx_cst],zcolor=slon_all[gidx_cst],ma=0.2,
+    title=string("Coast MER: Pred vs. Obs Ampl; corr=",cor(prd_amp_cst[gidx_cst],obs_amp_cst[gidx_cst])),
+    label="",xlabel="Pred",ylabel="Obs",cbarlabel="Counts")
+hp_Amp_cst = linfit(hp_Amp_cst,prd_amp_cst[gidx_cst],obs_amp_cst[gidx_cst])
+hp_Amp_stm = scatter(
+    prd_amp_stm[gidx_stm],obs_amp_stm[gidx_stm],zcolor=slon_all[gidx_stm],ma=0.2,
+    title=string("Storm MER: Pred vs. Obs Ampl; corr=",cor(prd_amp_stm[gidx_stm],obs_amp_stm[gidx_stm])),
+    label="",xlabel="Pred",ylabel="Obs",cbarlabel="Counts")
+hp_Amp_stm = linfit(hp_Amp_stm,prd_amp_stm[gidx_stm],obs_amp_stm[gidx_stm])
+hpall = plot(hp_Amp_cst,hp_Amp_stm,layout=grid(2,1),size=(800,1200))
+savefig(hpall,string(cDataOut,"Ampl_pred_obs_scatter_fit_lon.pdf"))
+# again with filter in place
+gidxlon = findall(slon_all[gidx_cst] .<= -75)
+hp_Amp_cst = scatter(
+    prd_amp_cst[gidx_cst[gidxlon]],obs_amp_cst[gidx_cst[gidxlon]],c=:black,ma=0.2,
+    title=string("Coast MER: Pred vs. Obs Ampl; corr=",cor(prd_amp_cst[gidx_cst[gidxlon]],obs_amp_cst[gidx_cst[gidxlon]])),
+    label="",xlabel="Pred",ylabel="Obs",cbarlabel="Counts")
+hp_Amp_cst = linfit(hp_Amp_cst,prd_amp_cst[gidx_cst[gidxlon]],obs_amp_cst[gidx_cst[gidxlon]])
+gidxlon = findall(slon_all[gidx_stm] .<= -75)
+hp_Amp_stm = scatter(
+    prd_amp_stm[gidx_stm[gidxlon]],obs_amp_stm[gidx_stm[gidxlon]],c=:black,ma=0.2,
+    title=string("Storm MER: Pred vs. Obs Ampl; corr=",cor(prd_amp_stm[gidx_stm[gidxlon]],obs_amp_stm[gidx_stm[gidxlon]])),
+    label="",xlabel="Pred",ylabel="Obs",cbarlabel="Counts")
+hp_Amp_stm = linfit(hp_Amp_stm,prd_amp_stm[gidx_stm[gidxlon]],obs_amp_stm[gidx_stm[gidxlon]])
+hpall = plot(hp_Amp_cst,hp_Amp_stm,layout=grid(2,1),size=(800,1200))
+savefig(hpall,string(cDataOut,"Ampl_pred_obs_scatter_fit_lonfilt.pdf"))
 
 # make a plot of fetch vs windspeed with obs ampl as scatter
 hp_A2D_cst = scatter(wndspd_all[gidx_cst],dlwest_all[gidx_cst]./1000;
@@ -3789,6 +4251,47 @@ hpall = plot(
     layout=grid(5,2),size=(800,1200)
 )
 savefig(hpall,string(cDataOut,"Ascl_v_everything.pdf"))
+
+## MAKE PLOTS OF RMW as a function of Seismic Amplitude and Windspeed
+scaled_obs_amp = log10.((10 .^(obs_amp_cst)) .* (2 .*pi.*dstnce_all./mean(filter(!isnan,dstnce_all)))) 
+gidxtmp = findall(.!isnan.(scaled_obs_amp) .& .!isnan.(wndspd_all))
+hpRMW = scatter(scaled_obs_amp[gidxtmp],wndspd_all[gidxtmp],zcolor=log10.(rmw_all[gidxtmp]),
+    #clim = (0,percentile(rmw_all[gidxtmp],99)),ma=0.8,
+    title="log10 RMW from Obs. Amp. and Wndspd",
+    xlabel="Distance-Corrected Observed Amplitude",
+    ylabel="Maximum Windspeed",
+    label = "",
+    )
+# contours
+xlen = 12; ylen = 12;
+xtmp = range(
+    minimum(filter(!isnan,scaled_obs_amp[gidxtmp])),
+    maximum(filter(!isnan,scaled_obs_amp[gidxtmp])),length=xlen)
+ytmp = range(
+    minimum(filter(!isnan,wndspd_all[gidxtmp])),
+    maximum(filter(!isnan,wndspd_all[gidxtmp])),length=ylen)
+ztmp = fill!(rand(xlen-1,ylen-1),NaN)
+for ix = 2:xlen
+    for iy = 2:ylen
+        xidx = findall(xtmp[ix-1] .<= scaled_obs_amp[gidxtmp] .<= xtmp[ix])
+        yidx = findall(ytmp[iy-1] .<= wndspd_all[gidxtmp] .<= ytmp[iy])
+        boxidx = intersect(xidx,yidx)
+        if !isempty(boxidx)
+            ztmp[ix-1,iy-1] = mean(rmw_all[gidxtmp][boxidx])
+        end
+    end
+end
+xtmp = xtmp[2:end].-mode(diff(xtmp))
+ytmp = ytmp[2:end].-mode(diff(ytmp))
+# ADD contours
+hpRMWcont = Plots.contourf(xtmp,ytmp,log10.(ztmp'),clabels=true,levels=10,
+    title="log10 RMW from Obs. Amp. and Wndspd",
+    xlabel="Distance-Corrected Observed Amplitude",
+    ylabel="Maximum Windspeed",)
+# SAVE PLOT!!
+hpRMWall = plot(hpRMW,hpRMWcont,layout=grid(1,2),size=(1200,500),bottom_margin=10mm)
+savefig(hpRMWall,string(cDataOut,"RMWContours.pdf"))
+
 
 ## MAKE PLOTS OF VARIABLES
 hpwndspd = histogram(wndspd_all,c=:grey47,title="Windspeed",xlabel="m/s",label="")
