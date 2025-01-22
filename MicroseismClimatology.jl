@@ -564,8 +564,22 @@ for k = 1:lastindex(spectD)
     end
 
     ## MAKE PLOTS
-    # make heatmap
-
+    # make heatmaps
+    hpmed = heatmap(Twindowctrs,spectF[k],Cspectmed,
+        title = "Median Log Power",
+        xlabel = "Fraction of Year",
+        ylabel = "Frequency (Hz)",
+        right_margin=5mm)
+    hpavg = heatmap(Twindowctrs,spectF[k],Cspectavg,
+        title = "Average Log Power",
+        xlabel = "Fraction of Year",
+        ylabel = "Frequency (Hz)",
+        right_margin=5mm)
+    hpstd = heatmap(Twindowctrs,spectF[k],Cspectstd,
+        title = "Standard Deviation of Log Power",
+        xlabel = "Fraction of Year",
+        ylabel = "Frequency (Hz)",
+        right_margin=5mm)
     # add frequency of maximal power
 
     # add 5 and 95th percentile lines (calcualted by summing)
