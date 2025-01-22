@@ -19,7 +19,7 @@ Last Modified:
 ## USER STRING
 user_str = "/Users/thomaslee/"
 
-## PACKAGESm
+## PACKAGES
 push!(LOAD_PATH, string(user_str,"Research/Julia/MyModules"))
 import LeeFunctions
 const lf = LeeFunctions
