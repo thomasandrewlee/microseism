@@ -80,7 +80,7 @@ cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of
 combineComps = false # turn on to combine data files (for legacy data)
 DaysInYear = 365.2422 # tropical year in days
 avg_window_size = 28 / 365 # as fraction of a year
-avg_window_step = 14 / 365 # as fraction of a year
+avg_window_step = 5 / 365 # as fraction of a year
 stdcutoff = [-3 3] # number of standard deviations either side of the mean to set the cutoff
 
 # plot settings
@@ -506,6 +506,8 @@ for k = 1:lastindex(spectD)
     Cspectavg = fill!(Array{Float64,2}(undef,(length(spectF[k]),length(Twindowctrs))),NaN) 
     Cspectmed = deepcopy(Cspectavg) # single median / avg spectra
     Cspectstd = deepcopy(Cspectavg)
+    Cspect5 = deepcopy(Cspectavg)
+    Cspect95 = deepcopy(Cspectavg)
     # convert time to years
     Tyear = Dates.value.(spectT[k])/(1000*60*60*24*DaysInYear) # time in years
     Tyearrem = rem.(Tyear,1)
@@ -532,12 +534,14 @@ for k = 1:lastindex(spectD)
         Cspectmed[:,i] = map(x->median(filter(!isnan,log10.(Cspect[end][x,:]))),1:lastindex(spectF[k]))
         Cspectavg[:,i] = map(x->mean(filter(!isnan,log10.(Cspect[end][x,:]))),1:lastindex(spectF[k]))
         Cspectstd[:,i] = map(x->std(filter(!isnan,log10.(Cspect[end][x,:]))),1:lastindex(spectF[k]))
+        Cspect5[:,i] = map(x->percentile(filter(!isnan,log10.(Cspect[end][x,:])),5),1:lastindex(spectF[k]))
+        Cspect95[:,i] = map(x->percentile(filter(!isnan,log10.(Cspect[end][x,:])),95),1:lastindex(spectF[k]))
         # make diagnostic plots
         if make_window_diag
             # check output dir
             if k==1 & i==1
-                if !isdir(string(cDataOut,"diag/"))
-                    mkdir(string(cDataOut,"diag/"))
+                if !isdir(string(cDataOut,"diag_",names[k],"/"))
+                    mkdir(string(cDataOut,"diag_",names[k],"/"))
                 end
             end
             # make the counts
@@ -552,40 +556,99 @@ for k = 1:lastindex(spectD)
             end
             # initialize the plot
             hf = heatmap(spectF[k],ptmp,tmpdensity,
-                title=string("Day ",
+                title=string(names[k]," Day ",
                     convert(Int,round(Twindowstrt[i]*DaysInYear))," to ",
                     convert(Int,round((Twindowstrt[i]+avg_window_size)*DaysInYear))),
                 xlabel="Frequency (Hz)",
                 ylabel="Log Power",
                 )
             # save the plot
-            savefig(hf,string(cDataOut,"diag/",lpad(i,3,"0"),".pdf"))
+            savefig(hf,string(cDataOut,"diag_",names[k],"/",lpad(i,3,"0"),".pdf"))
         end
     end
 
     ## MAKE PLOTS
     # make heatmaps
     hpmed = heatmap(Twindowctrs,spectF[k],Cspectmed,
-        title = "Median Log Power",
+        title = string(names[k]," Median Log Power"),
         xlabel = "Fraction of Year",
         ylabel = "Frequency (Hz)",
         right_margin=5mm)
     hpavg = heatmap(Twindowctrs,spectF[k],Cspectavg,
-        title = "Average Log Power",
+        title = string(names[k]," Average Log Power"),
         xlabel = "Fraction of Year",
         ylabel = "Frequency (Hz)",
         right_margin=5mm)
     hpstd = heatmap(Twindowctrs,spectF[k],Cspectstd,
-        title = "Standard Deviation of Log Power",
+        title = string(names[k]," Standard Deviation of Log Power"),
+        xlabel = "Fraction of Year",
+        ylabel = "Frequency (Hz)",
+        right_margin=5mm)
+    hp5 = heatmap(Twindowctrs,spectF[k],Cspect5,
+        title = string(names[k]," 5th Percentile of Log Power"),
+        xlabel = "Fraction of Year",
+        ylabel = "Frequency (Hz)",
+        right_margin=5mm)
+    hp95 = heatmap(Twindowctrs,spectF[k],Cspect95,
+        title = string(names[k]," 95th Percentile of Log Power"),
         xlabel = "Fraction of Year",
         ylabel = "Frequency (Hz)",
         right_margin=5mm)
     # add frequency of maximal power
-
-    # add 5 and 95th percentile lines (calcualted by summing)
+    scatter!(hpavg,Twindowctrs,
+        map(x->spectF[k][findfirst(maximum(filter(!isnan,Cspectavg[:,x])).==Cspectavg[:,x])],
+            1:lastindex(Twindowctrs)),
+        mc=:black, ms=2.5, label="Max")
+    scatter!(hpmed,Twindowctrs,
+        map(x->spectF[k][findfirst(maximum(filter(!isnan,Cspectmed[:,x])).==Cspectmed[:,x])],
+            1:lastindex(Twindowctrs)),
+        mc=:black, ms=2.5, label="Max")
+    scatter!(hp5,Twindowctrs,
+        map(x->spectF[k][findfirst(maximum(filter(!isnan,Cspect5[:,x])).==Cspect5[:,x])],
+            1:lastindex(Twindowctrs)),
+        mc=:black, ms=2.5, label="Max")
+    scatter!(hp95,Twindowctrs,
+        map(x->spectF[k][findfirst(maximum(filter(!isnan,Cspect95[:,x])).==Cspect95[:,x])],
+            1:lastindex(Twindowctrs)),
+        mc=:black, ms=2.5, label="Max")
+    # line plots
+    hppow = plot(Twindowctrs,log10.(vec(sum(10 .^Cspectavg,dims=1))),
+        title = string(names[k]," Total Power"),xlabel = "Fraction of Year",
+        label = "Average",)
+    plot!(hppow,Twindowctrs,log10.(vec(sum(10 .^Cspect5,dims=1))),label = "5th",ls=:dash)
+    plot!(hppow,Twindowctrs,log10.(vec(sum(10 .^Cspectmed,dims=1))),label = "50th")
+    plot!(hppow,Twindowctrs,log10.(vec(sum(10 .^Cspect95,dims=1))),label = "95th",ls=:dash)
+    hpstd = plot(Twindowctrs,vec(mean(Cspectstd,dims=1)),
+        title = string(names[k]," Standard Deviation of Log Power"),
+        xlabel = "Fraction of Year",label = "Average",)
+    plot!(hpstd,Twindowctrs,
+        map(x->percentile(Cspectstd[:,x],5),1:lastindex(Twindowctrs)),
+        label = "5th",ls=:dash)
+    plot!(hpstd,Twindowctrs,vec(median(Cspectstd,dims=1)),label = "50th")
+    plot!(hpstd,Twindowctrs,
+        map(x->percentile(Cspectstd[:,x],95),1:lastindex(Twindowctrs)),
+        label = "95th",ls=:dash)
+    # save figures
+    hpall = plot(hp5,hpmed,hp95,hpstd,layout=grid(2,2),size=(1200,800))
+    savefig(hpall,string(cDataOut,names[k],"_spects.pdf"))
+    savefig(hpavg,string(cDataOut,names[k],"_avgspect.pdf"))
+    hpline = plot(hppow,hpstd,layout=grid(1,2),size=(1000,400),bottom_margin=7mm)
+    savefig(hpline,string(cDataOut,names[k],"_lines.pdf"))
 
     ## SAVE AS SPECTRAS
-
+    save(string(cDataOut,names[k],"_",
+            convert(Int,round(Tyear[1])),"_",
+            convert(Int,round(Tyear[end])),
+            "_Climatology_savefile.jld"),
+        "Twindowctrs",Twindowctrs,
+        "spectF",spectF[k],
+        "Cspect5",Cspect5,
+        "Cspectmed",Cspectmed,
+        "Cspect95",Cspect95,
+        "Cspectavg",Cspectavg,
+        "Cspectstd",Cspectstd,
+        "name",names[k],
+    )
 end
 
  
