@@ -33,10 +33,11 @@ using ProgressBars
 using StatsBase
 
 ## SETTINGS
-cRunName = "TEST20250116_RMW"
+cRunName = "Window28_Step5_Secondary_5_10"
 # data locations
 spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226_secondary_5_10.jld")
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226.jld") # for BB
 spect_save_as_mat = false
 #station_gains_file = [] # use this empty to avoid correcting gains
 station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
