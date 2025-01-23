@@ -546,8 +546,8 @@ for k = 1:lastindex(spectD)
                     mkdir(string(cDataOut,"diag_",names[k],"/"))
                 end
                 # get bounds
-                hipow = percentile(filter(!isnan,spectD[k][:]),98)
-                lopow = percentile(filter(!isnan,spectD[k][:]),2)
+                global hipow = percentile(filter(!isnan,spectD[k][:]),98)
+                global lopow = percentile(filter(!isnan,spectD[k][:]),2)
             end
             # make the counts
             ptmp = range(log10(minimum(filter(!isnan,Cspect[end][:]))),
