@@ -540,10 +540,13 @@ for k = 1:lastindex(spectD)
         # make diagnostic plots
         if make_window_diag
             # check output dir
-            if k==1 & i==1
+            if i==1
                 if !isdir(string(cDataOut,"diag_",names[k],"/"))
                     mkdir(string(cDataOut,"diag_",names[k],"/"))
                 end
+                # get bounds
+                hipow = percentile(filter(!isnan,spectD[k][:]),98)
+                lopow = percentile(filter(!isnan,spectD[k][:]),2)
             end
             # make the counts
             ptmp = range(log10(minimum(filter(!isnan,Cspect[end][:]))),
@@ -561,7 +564,8 @@ for k = 1:lastindex(spectD)
                     convert(Int,round(Twindowstrt[i]*DaysInYear))," to ",
                     convert(Int,round((Twindowstrt[i]+avg_window_size)*DaysInYear))),
                 xlabel="Frequency (Hz)",
-                ylabel="Log Power",
+                ylabel="Log Power", 
+                ylim = (lopow,hipow),
                 )
             # save the plot
             savefig(hf,string(cDataOut,"diag_",names[k],"/",lpad(i,3,"0"),".pdf"))
