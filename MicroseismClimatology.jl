@@ -33,7 +33,8 @@ using ProgressBars
 using StatsBase
 
 ## SETTINGS
-cRunName = "Window28_Step5_Secondary_5_10"
+#cRunName = "Window28_Step5_Secondary_5_10"
+cRunName = "Window28_Step3_Secondary_5_10"
 # data locations
 spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226_secondary_5_10.jld")
@@ -81,7 +82,7 @@ cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of
 combineComps = false # turn on to combine data files (for legacy data)
 DaysInYear = 365.2422 # tropical year in days
 avg_window_size = 28 / 365 # as fraction of a year
-avg_window_step = 5 / 365 # as fraction of a year
+avg_window_step = 3 / 365 # as fraction of a year
 stdcutoff = [-3 3] # number of standard deviations either side of the mean to set the cutoff
 
 # plot settings
