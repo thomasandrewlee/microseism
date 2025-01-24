@@ -34,11 +34,11 @@ using StatsBase
 
 ## SETTINGS
 #cRunName = "Window28_Step5_Secondary_5_10"
-cRunName = "Window28_Step3_Secondary_5_10"
+cRunName = "Window28_Step3_BB_1_100"
 # data locations
 spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226_secondary_5_10.jld")
-#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226.jld") # for BB
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226_secondary_5_10.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226.jld") # for BB
 spect_save_as_mat = false
 #station_gains_file = [] # use this empty to avoid correcting gains
 station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
@@ -48,7 +48,7 @@ cDataOut = string(user_str,"Desktop/MicroseismClimatology/",cRunName,"/") # data
 # station frequency and time information
 StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.STA.INST.CHNL format
 #plot_f_range = [0.01,0.6]
-plot_f_range = [0.1,0.5] # range of frequencies to plot things over
+plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 stime = Dates.DateTime(1988,1,1) # start time for spectra 
 etime = Dates.DateTime(2024,1,1) # end time for spectra 
 
@@ -546,8 +546,8 @@ for k = 1:lastindex(spectD)
                     mkdir(string(cDataOut,"diag_",names[k],"/"))
                 end
                 # get bounds
-                global hipow = percentile(filter(!isnan,spectD[k][:]),98)
-                global lopow = percentile(filter(!isnan,spectD[k][:]),2)
+                global hipow = log10(percentile(filter(!isnan,spectD[k][:]),98))
+                global lopow = log10(percentile(filter(!isnan,spectD[k][:]),2))
             end
             # make the counts
             ptmp = range(log10(minimum(filter(!isnan,Cspect[end][:]))),
