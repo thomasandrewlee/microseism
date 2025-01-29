@@ -44,7 +44,7 @@ using LombScargle
 ## SETTINGS
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med14_steps3_97/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_logfrqwght/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_logfrqwght_micrometric/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -58,7 +58,8 @@ readin_new = "rickmicrometric" # convert to velocity and divide into bands
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
-c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M5.5_LPZ_BHZ_ampscl_stack10_logfrqwght/txfr.jld") 
+c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M5.5_LPZ_BHZ_ampscl_stack10_microcorr/txfr.jld") 
+use_empirical = true # otherwise use the theoretical fit
 smoothing = 0.02 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
@@ -341,17 +342,23 @@ hp9 = plot(1 ./newF[fidx],
 tmpvar = load(c_lpz2bhz_txfr)
 txfrf = tmpvar["freq"]
 txfr = tmpvar["txfr"]
+txfrq = tmpvar["txfrQ"] # theoretical transfer function fit to data
 txfr5 = tmpvar["txfr5"]
 txfr95 = tmpvar["txfr95"]
 tmpvar = []
 print(string("Read LPZ to BHZ transfer function from: ",c_lpz2bhz_txfr,"\n"))
 # smooth transfer function
 Nsmth = convert(Int,round(smoothing/mode(diff(txfrf))))
-txfr_smth = movmean(txfr,Nsmth)
+if use_empirical
+    txfr_smth = movmean(txfr,Nsmth)
+else
+    txfr_smth = movmean(txfrq,Nsmth)
+end
 # interpolate txfr function to frequencies in oldFall
 gidx = findall(txfrf[1] .<= LPZspectF .<= txfrf[end])
+txfr_int = fill!(Vector{Float64}(undef,length(LPZspectF)),NaN)
 itp = LinearInterpolation(txfrf,vec(txfr_smth))
-txfr_int = itp(LPZspectF[gidx])
+txfr_int[gidx] = itp(LPZspectF[gidx])
 # make plot
 hp4 = plot(1 ./txfrf,txfr,axis=:log,label="lpz2bhz",
     xlabel="Period (s)",ylabel="pixels / (m/s)",minorgrid=true)
@@ -362,10 +369,10 @@ txfr_pwr = txfr_int.^2
 # remove response and convert to pseudo BHZ
 oldDall = oldDall0 ./ txfr_pwr
 # plot
-hp5 = scatter(oldTall[pidx],vec(mean(oldDall,dims=1))[pidx],mc=:black,ms=1,ma=0.5,
+hp5 = scatter(oldTall[pidx],vec(mean(oldDall[gidx,:],dims=1))[pidx],mc=:black,ms=1,ma=0.5,
     ylabel="(m/s)^2/Hz",title="Pseudo-BHZ HRV.ALL",label="",ylim=(
-        percentile(vec(filter(!isnan,mean(oldDall,dims=1))),outliers[1]),
-        percentile(vec(filter(!isnan,mean(oldDall,dims=1))),outliers[2])
+        percentile(vec(filter(!isnan,mean(oldDall[gidx,:],dims=1))),outliers[1]),
+        percentile(vec(filter(!isnan,mean(oldDall[gidx,:],dims=1))),outliers[2])
     ))
 fidx = findall(0 .<= (1 ./LPZspectF) .<= 30)
 hp7 = plot(1 ./LPZspectF[fidx],
