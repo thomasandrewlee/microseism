@@ -58,7 +58,7 @@ spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_20241226_secondary_5_10.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_SACPZ.jld")
 spect_save_as_mat = false
 seisreadmode = "standard"
 #seisreadmode = "rickmicrometric" # input files for aster et al. processing
@@ -66,6 +66,8 @@ seisreadmode = "standard"
 micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
 #station_gains_file = [] # use this empty to avoid correcting gains
 station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
+station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
+station_gains_SACPZ = true # if the gains are in a SAC PZ format
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
@@ -89,7 +91,7 @@ cDataOut = string(user_str,"Desktop/MAI/",cRunName,"/") # data output folder
 # station frequency and time information
 StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.STA.INST.CHNL format
 #plot_f_range = [0.01,0.6]
-plot_f_range = [0.1,0.5] # range of frequencies to plot things over
+plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.3,0.6] # range of frequencies to consider in making barometry comparison
 stime = Dates.DateTime(1988,1,1) # start time for spectra 
 etime = Dates.DateTime(2024,1,1) # end time for spectra 
@@ -580,31 +582,53 @@ if !go_to_results
             end
             # correct gain (assuming flat response, not a bad one for VBB HRV)
             if !isempty(station_gains_file)
-                spectG = map(x->fill!(Vector{Float64}(undef,length(spectT[x])),NaN),1:lastindex(spectT)) # initialize gain array
+                if station_gains_SACPZ
+                    spectG = map(x->fill!(Array{Float64,2}(undef,(length(spectF[x]),length(spectT[x]))),NaN),1:lastindex(spectT))
+                else
+                    spectG = map(x->fill!(Array{Float64,2}(undef,length(spectT[x])),NaN),1:lastindex(spectT)) # initialize gain array
+                end
                 for i = 1:lastindex(spectD)
                     if names[i]=="HRV.BHZ" # currently only gains for HRV.BHZ were grabbed
-                        # read in the gain file
-                        ln = open(station_gains_file) do f
-                            readlines(f)
+                        if station_gains_SACPZ
+                            # read gains
+                            stimetmp, etimetmp, gaintmp, ptmp, htmp = lf.readsacpz(
+                                station_gains_file,spectF[i],true,true)
+                            mkdir(string(cDataOut,"responses/"))
+                            for j = 1:lastindex(h)
+                                savefig(h[j],string(cDataOut,"responses/",
+                                    Dates.format(stimetmp[i],"yyyymmdd"),"_",
+                                    Dates.format(etimetmp[i],"yyyymmdd"),".pdf"))
+                            end
+                        else
+                            # read in the gain file
+                            ln = open(station_gains_file) do f
+                                readlines(f)
+                            end
+                            stimetmp = [] # start of time periods
+                            etimetmp = [] # end of time periods
+                            gaintmp = [] # gain for that time period (counts / (m/s))
+                            for il = 3:lastindex(ln) # skip header line
+                                commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
+                                push!(stimetmp,Dates.DateTime(ln[il][1:commas[1]-1],Dates.dateformat"yyyy-mm-dd"))
+                                push!(etimetmp,Dates.DateTime(ln[il][commas[1]+1:commas[2]-1],Dates.dateformat"yyyy-mm-dd"))
+                                push!(gaintmp,parse(Float64,ln[il][commas[5]+1:commas[6]-1]))
+                            end 
                         end
-                        stimetmp = [] # start of time periods
-                        etimetmp = [] # end of time periods
-                        gaintmp = [] # gain for that time period (counts / (m/s))
-                        for il = 3:lastindex(ln) # skip header line
-                            commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
-                            push!(stimetmp,Dates.DateTime(ln[il][1:commas[1]-1],Dates.dateformat"yyyy-mm-dd"))
-                            push!(etimetmp,Dates.DateTime(ln[il][commas[1]+1:commas[2]-1],Dates.dateformat"yyyy-mm-dd"))
-                            push!(gaintmp,parse(Float64,ln[il][commas[5]+1:commas[6]-1]))
-                        end 
                         # loop over the periods and set gains
                         for j = 1:lastindex(gaintmp)
                             tidx = findall(stimetmp[j] .<= spectT[i] .<=etimetmp[j])
                             if !isempty(tidx)
-                                spectG[i][tidx] .= gaintmp[j] 
+                                if station_gains_SACPZ
+                                    spectG[i][:,tidx] .= gaintmp[j] 
+                                else
+                                    spectG[i][tidx] .= gaintmp[j] 
+                                end
                             end
                         end
                         # divide by gain squared to get (m/s)^2 / Hz from counts^2 / Hz
                         spectD[i] = spectD[i] ./ (spectG[i].^2)'
+                    else
+                        error("STOP! YOU NEED GAINS FOR A STATION THAT IS NOT HRV!!")
                     end
                 end
             end
