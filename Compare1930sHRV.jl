@@ -44,23 +44,23 @@ using LombScargle
 ## SETTINGS
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med14_steps3_97/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_logfrqwght_micrometric/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_10prct_6hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld")
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld")
-#c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
+#c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
-#readin_new = "standard" # regular way from MicroseismActivityIndex.jl
-readin_new = "rickmicrometric" # convert to velocity and divide into bands
+readin_new = "standard" # regular way from MicroseismActivityIndex.jl
+#readin_new = "rickmicrometric" # convert to velocity and divide into bands
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
 c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M5.5_LPZ_BHZ_ampscl_stack10_microcorr/txfr.jld") 
 use_empirical = true # otherwise use the theoretical fit
-smoothing = 0.02 # smoothing window in Hz
+smoothing = 0.03 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
 # outlier culling
@@ -70,9 +70,10 @@ DaysInYear = 365.2422 # tropical year in days
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
 # rolling median
-rollmedwind = Dates.Day(0) # set to zero for none
+rollmedwind = Dates.Day(0) # set to zero for non
 #rollmedwind = Dates.Day(0)
 # harmonics (seasonal)
+harmonicsmedwind = Dates.Day(60) # just for harmonics
 removeharmonics = true
 Ncoefficients = 4 # how many overtones? (1 is fundamental only)
 t0 = 1 # in years
@@ -89,6 +90,12 @@ trendmode = "quantile" # valid modes are "quantile" "l2" and "tukey"
 IRLS = true # if true this runs the iterative least squares from RobustLeastSquares instead of RobustModels
 maxNaNratio = 0.6 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
+bands = [ # seconds (one pair is a row with a lower and upper value)
+    4 12; #secondary
+    14 20; # primary
+    4 20; # all microseism
+    ] 
+# # bands for primary and secondary (micrometric)
 # bands = [ # seconds (one pair is a row with a lower and upper value)
 #     6 13; #secondary
 #     13 20; # primary
@@ -116,16 +123,16 @@ maxNaNratio = 0.6 # maximum ratio of NaN to data in rolling median
 #     17 19;
 #     18 20;
 #     ] 
-bands = [ # 3 second evens (odd band centers) for micrometrics
-    4 6;
-    6 8;
-    8 10;
-    10 12;
-    12 14;
-    14 16;
-    16 18;
-    18 20;
-    ]
+# bands = [ # 3 second evens (odd band centers) for micrometrics
+#     4 6;
+#     6 8;
+#     8 10;
+#     10 12;
+#     12 14;
+#     14 16;
+#     16 18;
+#     18 20;
+#     ]
 # bands = [ # 5 second
 #     1 5; # stepped bands
 #     2 6;
@@ -381,8 +388,16 @@ hp7 = plot(1 ./LPZspectF[fidx],
     xlim=(0,30),yaxis=:log,)
 hpb = plot(hp3,hp5,hp8,hp6,hp7,hp9,layout=grid(2,3),size=(1600,800),
     left_margin=10mm,bottom_margin=10mm,)
+hpc = plot(1 ./LPZspectF[fidx],
+    map(x->median(filter(!isnan,oldDall[fidx[x],:])),1:lastindex(fidx)),
+    xlabel="Period (s)",title="Total Spectra",label="Analog HRV",ylabel="(m/s)^2/Hz",
+    xlim=(0,30),yaxis=:log,)
+fidx2 = findall(0 .<= (1 ./newF) .<= 30)
+plot!(hpc, 1 ./newF[fidx2],
+    map(x->median(filter(!isnan,newD0[fidx2[x],:])),1:lastindex(fidx2)),label="Modern HRV")
 savefig(hpb,string(c_dataout,"correctedLPZ.pdf"))
 savefig(hp4,string(c_dataout,"lpz2bhz.pdf"))
+savefig(hpc,string(c_dataout,"spectracomp.pdf"))
 
 # intialize 
 bandctr = [] # seconds
@@ -410,7 +425,11 @@ for i = 1:Nbands
     if readin_new=="standard"
         global newD = map(x->lf.trapsum(newF[newfidx],vec(newD0[newfidx,x])),1:lastindex(newT))
     elseif readin_new=="rickmicrometric"
-        global newD = vec(newD0[newfidx,:])
+        if length(newfidx) > 1
+            global newD = vec(sum(newD0[newfidx,:],dims=1))
+        else
+            global newD = vec(newD0[newfidx,:])
+        end
     else
         error("value for variable readin_new not recognized!")
     end
@@ -483,6 +502,11 @@ for i = 1:Nbands
     if removeharmonics
         # get time in years
         tmpD = deepcopy(newDfilt)
+        if harmonicsmedwind>Dates.Day(0)
+            windyear = Dates.value(Dates.Day(harmonicsmedwind))/DaysInYear
+            Nmedwind = convert(Int,round(windyear/mode(diff(newTyear))))
+            tmpD = lf.movingmedian(tmpD,Nmedwind,0.5) # no more than 1/2 NaN in a window
+        end 
         global harmonicD = zeros(length(tmpD))
         #     # replace NaN with mean mean values
         #     tmpD[findall(isnan.(tmpD))].=mean(filter(!isnan,tmpD))
@@ -778,6 +802,16 @@ plot!(hpe2,bandctr,mdrnmed,yerror=mdrnmede*1.96,label="Modern")
 plot!(hpe2,bandctr,compmed,yerror=compmede*1.96,label="Complete")
 hpe = plot(hpe1,hpe2,layout=grid(1,2),size=(2000,800),left_margin=10mm,bottom_margin=10mm,)
 savefig(hpe,string(c_dataout,"variance_with_bands.pdf"))
+# and w/o historical and w/o error bars
+hpe1l = plot(bandctr,comptrend,label="Complete",yminorgrid=true,
+    ylabel="% rel. to med.",xlabel="Period (s)",title="Trends")
+plot!(hpe1l,bandctr,mdrntrend,label="Modern")
+hpe2l = plot(bandctr,compmed,label="Complete",yminorgrid=true,
+    ylabel=unitstring,xlabel="Period (s)",title="Medians")
+plot!(hpe2l,bandctr,mdrnmed,label="Modern")
+plot!(hpe2l,bandctr,histmed,label="Historical")
+hpel = plot(hpe1l,hpe2l,layout=grid(1,2),size=(2000,800),left_margin=10mm,bottom_margin=10mm,)
+savefig(hpel,string(c_dataout,"variance_with_bands_nohist.pdf"))
 #do them separately
 hpe1 = plot(bandctr,histtrend,yerror=histtrende*1.96,label="Historical",
     ylabel="% rel. to med.",xlabel="Period (s)",title="Trends")
