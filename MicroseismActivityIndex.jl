@@ -593,9 +593,11 @@ if !go_to_results
                             # read gains
                             stimetmp, etimetmp, gaintmp, ptmp, htmp = lf.readsacpz(
                                 station_gains_file,spectF[i],true,true)
-                            mkdir(string(cDataOut,"responses/"))
-                            for j = 1:lastindex(h)
-                                savefig(h[j],string(cDataOut,"responses/",
+                            if !isdir(string(cDataOut,"responses/"))
+                                mkdir(string(cDataOut,"responses/"))
+                            end
+                            for j = 1:lastindex(htmp)
+                                savefig(htmp[j],string(cDataOut,"responses/",
                                     Dates.format(stimetmp[i],"yyyymmdd"),"_",
                                     Dates.format(etimetmp[i],"yyyymmdd"),".pdf"))
                             end
