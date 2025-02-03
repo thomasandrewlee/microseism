@@ -598,8 +598,8 @@ if !go_to_results
                             end
                             for j = 1:lastindex(htmp)
                                 savefig(htmp[j],string(cDataOut,"responses/",
-                                    Dates.format(stimetmp[i],"yyyymmdd"),"_",
-                                    Dates.format(etimetmp[i],"yyyymmdd"),".pdf"))
+                                    Dates.format(stimetmp[j],"yyyymmdd"),"_",
+                                    Dates.format(etimetmp[j],"yyyymmdd"),".pdf"))
                             end
                         else
                             # read in the gain file
@@ -628,7 +628,7 @@ if !go_to_results
                             end
                         end
                         # divide by gain squared to get (m/s)^2 / Hz from counts^2 / Hz
-                        spectD[i] = spectD[i] ./ (spectG[i].^2)'
+                        spectD[i] = spectD[i] ./ (spectG[i].^2)
                     else
                         error("STOP! YOU NEED GAINS FOR A STATION THAT IS NOT HRV!!")
                     end
