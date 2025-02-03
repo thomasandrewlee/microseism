@@ -14,17 +14,23 @@ clc
 
 %% setup
 % directories
-c_copernicus = '/Users/tl7869/Downloads/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_1729882053241.nc';
+c_copernicus = '/Users/tl7869/Downloads/cmems_mod_glo_wav_anfc_0.083deg_PT3H-i_multi-vars_109.50W-7.08W_1.08S-54.25N_2024-10-01-2024-11-01.nc';
 c_psdadam = '/Users/tl7869/Downloads/Power_data_IU_DWPF_00_LHZ.csv';
-c_dataout = '/Users/tl7869/Desktop/MicroseismIntegration/';
+c_dataout = '/Users/tl7869/Desktop/MicroseismIntegration_VHM0/';
 c_bathymetry = '/Users/tl7869/Research/gebco_2022_ascii_NORTHATLANTICBIG/gebco_2022_n70.0_s0.0_w-100.0_e-10.0.asc';
 % make plots?
-makeplots = false;
+makeplots = true;
 makeweightplot = true;
+% primary or secondary processing
+uselonguetres = false; % use longuet higgins resonances
+useexponential = true; % decay exponentially with depth
+fitexponential = true; % fit the exponential decay with depth
+a_expo = 1; % a*exp(b*x) = y
+b_expo = 0;
 % copernicus variable to use
-cvar = 'VCMX'; % significant wave height 'VCMX' is max wave height, 'VHM0' is sig wave hght
+cvar = 'VHM0'; % significant wave height 'VCMX' is max wave height, 'VHM0' is sig wave hght
 % station info
-stalat = 28.11;
+stalat = 28.11; % DWPF
 stalon = -81.43;
 % integration parameters
 useatten = true;
