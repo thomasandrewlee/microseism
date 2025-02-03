@@ -8,8 +8,14 @@
 % created: 10/28/2024
 % thomas lee
 %
-% last modded:
+% last modded: 02/02/2025
+% this update allows for the comparison of data from WAVEWATCH data instead
+% of copernicus. This is controlled by the 'compdataset' variable set to
+% either 'WW3' or 'Copernicus'. In the WW3 case, the data comes from the
+% script 'readww3.m', and comes in the form of .mat files with spectras on
+% a grid in time. (4-D, lat, lon, time, freq).
 %
+% last modded:
 
 %% init
 clc
@@ -18,7 +24,9 @@ close all
 
 %% setup
 % data sources
+compdataset = 'WW3'; % comparison data set to use: 'WW3' or 'Copernicus'
 c_MERDAT_COP = '/Users/tl7869/Desktop/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
+c_MAT_WW3 = '/Users/tl7869/Desktop/WW3_OUT_REF102040/';
 c_output = '/Users/tl7869/Desktop/acoustic_v_surface/';
 % psd to use
 use50 = true; % otherwise use 95
@@ -38,6 +46,15 @@ end
 
 %% read data
 load(c_MERDAT_COP);
+if strcmpi(compdat,'WW3')
+    % get directory contents
+    ftmp = dir(c_MAT_WW3);
+    % get only mat files
+    
+    % do first file and init
+
+    % loop over the rest of the files
+end
 
 %% intialize matrices for data
 % get total number of samples for preallocation
@@ -74,7 +91,7 @@ for i = 1:length(MERDAT)
             % save time and pos
             lat(colnum) = MERDAT(i).dat(j).lat(k);
             lon(colnum) = MERDAT(i).dat(j).lon(k);
-            time(colnum) = MERDAT(i).dat(j).time(k);
+            times(colnum) = MERDAT(i).dat(j).time(k);
             % loop over bands
             for l = 1:Nbands
                 % get data
@@ -105,7 +122,7 @@ bandpowlin = 10.^(bandpow./10);
 
 %% plot the time trend of the power
 hf = figure; ha = axes;
-scatter(ha,time,bandpow)
+scatter(ha,times,bandpow)
 ha.Title.String = 'Power in Bands for All Buoys';
 legend(ha,num2str(bands));
 savefig([c_output,'bands_w_time'],hf.Number,'pdf');
@@ -137,3 +154,32 @@ for i = 1:length(cvars)
     close(hf);
 end
 
+%% compute fourier trends for the time series (MERMAID)
+daytime = datenum(times-min(times)); % convert to days since 01/00/0000
+for i = 1:Nbands
+    tmppow = bandpow(i,:) - mean(bandpow(i,:),"omitnan");
+    tmppow(isnan(tmppow)) = 0;
+    [power,freq,~] = lomb(tmppow,daytime);
+    hf = figure; ha = axes;
+    plot(ha,1./freq,power); 
+    xlim(ha,[0,400]); ha.XScale = 'log';
+    ha.XLabel.String = "Days / Cycle";
+    ha.Title.String = ['Band: ',num2str(bands(i,:))];
+    ha.XMinorGrid = true;
+    savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
+    close(hf);
+end
+%% compute fourier trends for the time series (COPERNICUS)
+for i = 1:length(cvars)
+    tmppow = varofint(i,:) - mean(varofint(i,:),"omitnan");
+    tmppow(isnan(tmppow)) = 0;
+    [power,freq,~] = lomb(tmppow,daytime);
+    hf = figure; ha = axes;
+    plot(ha,1./freq,power); 
+    xlim(ha,[0,400]); ha.XScale = 'log';
+    ha.XLabel.String = "Days / Cycle";
+    ha.Title.String = cvarslab{i};
+    ha.XMinorGrid = true;
+    savefig([c_output,'Spectra_',cvars{i}],hf.Number,'pdf')
+    close(hf);
+end
