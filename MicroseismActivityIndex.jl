@@ -591,7 +591,7 @@ if !go_to_results
                     if names[i]=="HRV.BHZ" # currently only gains for HRV.BHZ were grabbed
                         if station_gains_SACPZ
                             # read gains
-                            stimetmp, etimetmp, gaintmp, ptmp, htmp = lf.readsacpz(
+                            stimetmp, etimetmp, gaintmp, ptmp, txfr, htmp = lf.readsacpz(
                                 station_gains_file,spectF[i],true,true)
                             if !isdir(string(cDataOut,"responses/"))
                                 mkdir(string(cDataOut,"responses/"))
