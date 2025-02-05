@@ -39,7 +39,7 @@ cvars = {'VCMX','VHM0',...
     'VMDR_SW1','VMDR_SW2','VMDR_WW',...
     'VTM01_SW1','VTM01_SW2','VTM01_WW'};
 % climatology params
-climwind = 29; % in days
+climwind = 28; % in days
 climstep = 1; % in days
 
 % setupdir
@@ -257,7 +257,7 @@ savefig([c_output,'ww3'],hf.Number,'pdf')
 close(hf);
 % 2d histogram
 hf1 = figure;
-hf.Position = [hf1.Position(1:3),hf1.Position(4)*Nbands];
+hf1.Position = [hf1.Position(1:3),hf1.Position(4)*Nbands];
 for j = 1:Nbands
     ha = subplot(Nbands,1,j);
     histogram2(ww3pow(j,:),bandpow(j,:),50,'DisplayStyle','tile',...
@@ -273,9 +273,9 @@ daytime = datenum(times-min(times)); % convert to days since 01/00/0000
 for i = 1:Nbands
     tmppow = bandpow(i,:) - mean(bandpow(i,:),"omitnan");
     tmppow(isnan(tmppow)) = 0;
-    [power,freq,~] = lomb(tmppow,daytime);
+    [power,f,~] = lomb(tmppow,daytime);
     hf = figure; ha = axes;
-    plot(ha,1./freq,power); 
+    plot(ha,1./f,power); 
     xlim(ha,[0,400]); ha.XScale = 'log';
     ha.XLabel.String = "Days / Cycle";
     ha.Title.String = ['Band: ',num2str(bands(i,:))];
@@ -285,9 +285,9 @@ for i = 1:Nbands
     if useww3 % fourier for ww3
         tmppow = ww3pow(i,:) - mean(ww3pow(i,:),"omitnan");
         tmppow(isnan(tmppow)) = 0;
-        [power,freq,~] = lomb(tmppow,daytime);
+        [power,f,~] = lomb(tmppow,daytime);
         hf = figure; ha = axes;
-        plot(ha,1./freq,power); 
+        plot(ha,1./f,power); 
         xlim(ha,[0,400]); ha.XScale = 'log';
         ha.XLabel.String = "Days / Cycle";
         ha.Title.String = ['Band: ',num2str(bands(i,:))];
@@ -300,9 +300,9 @@ end
 for i = 1:length(cvars)
     tmppow = varofint(i,:) - mean(varofint(i,:),"omitnan");
     tmppow(isnan(tmppow)) = 0;
-    [power,freq,~] = lomb(tmppow,daytime);
+    [power,f,~] = lomb(tmppow,daytime);
     hf = figure; ha = axes;
-    plot(ha,1./freq,power); 
+    plot(ha,1./f,power); 
     xlim(ha,[0,400]); ha.XScale = 'log';
     ha.XLabel.String = "Days / Cycle";
     ha.Title.String = cvarslab{i};
@@ -313,7 +313,7 @@ end
 
 %% compute spectral transfer functions from ww3 to MERMAID
 if useww3
-    % compute and plot average spectra
+    %% compute and plot average spectra
     hf = figure; ha = axes;
     errorbar(prd,mean(merspect,2,"omitnan"),std(merspect,0,2,"omitnan"));
     hold on;
@@ -336,12 +336,127 @@ if useww3
     savefig([c_output,'MedSpects'],hf.Number,'pdf')
     close(hf);
 
-    % compute seasonality / climatology
+    %% compute seasonality / climatology
+    % set centers
+    climctrs = 0:climstep:365;
+    % intialize
+    ww3clim.median = nan(length(ww3f),length(climctrs));
+    ww3clim.p5 = nan(length(ww3f),length(climctrs)); 
+    ww3clim.p95 = nan(length(ww3f),length(climctrs));
+    ww3clim.mean = nan(length(ww3f),length(climctrs));
+    ww3clim.std = nan(length(ww3f),length(climctrs));
+    merclim.median = nan(length(freq),length(climctrs));
+    merclim.p5 = nan(length(freq),length(climctrs)); 
+    merclim.p95 = nan(length(freq),length(climctrs));
+    merclim.mean = nan(length(freq),length(climctrs)); 
+    merclim.std = nan(length(freq),length(climctrs));
     % convert times to doy
-    ww3doy = 
-    merdoy = 
+    ww3doy = day(datetime(ww3t,'ConvertFrom','datenum'),'DayofYear');
+    merdoy = day(times,'DayofYear');
+    for i = 1:length(climctrs)
+        % get endpoints
+        doy0 = climctrs(i) - climwind/2; % start day
+        doy1 = climctrs(i) + climwind/2; % end day
+        % get indices
+        if doy0>=0 & doy1<=365 % normal
+            ww3idx = find(ww3doy>=doy0 & ww3doy<=doy1);
+            meridx = find(merdoy>=doy0 & merdoy<=doy1);
+        elseif doy1>365 % wrap over end
+            ww3idx = find(ww3doy>=doy0 | ww3doy<=doy1-365);
+            meridx = find(merdoy>=doy0 | merdoy<=doy1-365);
+        elseif doy0<0 % wrap over beginning
+            ww3idx = find(ww3doy>=doy0+365 | ww3doy<=doy1);
+            meridx = find(merdoy>=doy0+365 | merdoy<=doy1);
+        else
+            error('HOW DID YOU EVEN GET HERE?')
+        end
+        % compute the median, 5th and 95th percentile, mean,and std
+        ww3clim.median(:,i) = median(ww3spect(:,ww3idx),2,"omitnan");
+        ww3clim.p5(:,i) = prctile(ww3spect(:,ww3idx),5,2);
+        ww3clim.p95(:,i) = prctile(ww3spect(:,ww3idx),95,2);
+        ww3clim.mean(:,i) = mean(ww3spect(:,ww3idx),2,"omitnan");
+        ww3clim.std(:,i) = std(ww3spect(:,ww3idx),0,2,"omitnan");
+        % same for mermaid
+        merclim.median(:,i) = median(merspect(:,meridx),2,"omitnan");
+        merclim.p5(:,i) = prctile(merspect(:,meridx),5,2);
+        merclim.p95(:,i) = prctile(merspect(:,meridx),95,2);
+        merclim.mean(:,i) = mean(merspect(:,meridx),2,"omitnan");
+        merclim.std(:,i) = std(merspect(:,meridx),0,2,"omitnan");
+    end
+    % make seasonality plots for ww3
+    hf = figure;
+    ha1 = subplot(3,1,1);
+    imagesc(climctrs,ww3f,ww3clim.p5)
+    ha1.Title.String = "WW3 5th Percentile";
+    ha1.YDir = 'normal'; colorbar;
+    ha1.YLabel.String = "Frequency (Hz)";
+    ha2 = subplot(3,1,2);
+    imagesc(climctrs,ww3f,ww3clim.median)
+    ha2.Title.String = "WW3 50th Percentile";
+    ha2.YDir = 'normal'; colorbar;
+    ha2.YLabel.String = "Frequency (Hz)";
+    ha3 = subplot(3,1,3);
+    imagesc(climctrs,ww3f,ww3clim.p95)
+    ha3.Title.String = "WW3 95th Percentile";
+    ha3.YDir = 'normal'; colorbar;
+    ha3.YLabel.String = "Frequency (Hz)";
+    ha3.XLabel.String = "Day of Year";
+    savefig([c_output,'ww3_seasonality_prct'],hf.Number,'pdf')
+    close(hf);
+    hf = figure;
+    ha1 = subplot(2,1,1);
+    imagesc(climctrs,ww3f,ww3clim.mean)
+    ha1.Title.String = "WW3 Mean";
+    ha1.YDir = 'normal'; colorbar;
+    ha1.YLabel.String = "Frequency (Hz)";
+    ha3 = subplot(2,1,2);
+    imagesc(climctrs,ww3f,ww3clim.std)
+    ha3.Title.String = "WW3 Std";
+    ha3.YDir = 'normal'; colorbar;
+    ha3.YLabel.String = "Frequency (Hz)";
+    ha3.XLabel.String = "Day of Year";
+    savefig([c_output,'ww3_seasonality_mean'],hf.Number,'pdf')
+    close(hf);
+    % and again for MERMAID
+    hf = figure;
+    ha1 = subplot(3,1,1);
+    imagesc(climctrs,freq,merclim.p5)
+    ha1.Title.String = "MERMAID 5th Percentile";
+    ha1.YDir = 'normal'; colorbar;
+    ha1.YLabel.String = "Frequency (Hz)";
+    ha2 = subplot(3,1,2);
+    imagesc(climctrs,freq,merclim.median)
+    ha2.Title.String = "MERMAID 50th Percentile";
+    ha2.YDir = 'normal'; colorbar;
+    ha2.YLabel.String = "Frequency (Hz)";
+    ha3 = subplot(3,1,3);
+    imagesc(climctrs,freq,merclim.p95)
+    ha3.Title.String = "MERMAID 95th Percentile";
+    ha3.YDir = 'normal'; colorbar;
+    ha3.YLabel.String = "Frequency (Hz)";
+    ha3.XLabel.String = "Day of Year";
+    savefig([c_output,'mermaid_seasonality_prct_full'],hf.Number,'pdf')
+    ha1.YLim = [0,2]; ha2.YLim = [0,2]; ha3.YLim = [0,2];
+    savefig([c_output,'mermaid_seasonality_prct'],hf.Number,'pdf')
+    close(hf);
+    hf = figure;
+    ha1 = subplot(2,1,1);
+    imagesc(climctrs,freq,merclim.mean)
+    ha1.Title.String = "MERMAID Mean";
+    ha1.YDir = 'normal'; colorbar;
+    ha1.YLabel.String = "Frequency (Hz)";
+    ha3 = subplot(2,1,2);
+    imagesc(climctrs,freq,merclim.std)
+    ha3.Title.String = "MERMAID Std";
+    ha3.YDir = 'normal'; colorbar;
+    ha3.YLabel.String = "Frequency (Hz)";
+    ha3.XLabel.String = "Day of Year";
+    savefig([c_output,'mermaid_seasonality_mean_full'],hf.Number,'pdf')
+    ha1.YLim = [0,2]; ha3.YLim = [0,2];
+    savefig([c_output,'mermaid_seasonality_mean'],hf.Number,'pdf')
+    close(hf);
 
-    % compute transfer functions
+    %% compute transfer functions
 
 
     % look at seasonality of transfers
