@@ -51,7 +51,8 @@ c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standar
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_10prct_6hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld")
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
+#c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_SACPZ.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
 readin_new = "standard" # regular way from MicroseismActivityIndex.jl
 #readin_new = "rickmicrometric" # convert to velocity and divide into bands
@@ -103,26 +104,26 @@ bands = [ # seconds (one pair is a row with a lower and upper value)
 #     5 10; # reliable looking part of response
 #     1 10; # peterson secondary peak
 #     ] 
-# bands = [ # 3 second
-#     1 3; # stepped bands
-#     2 4;
-#     3 5;
-#     4 6;
-#     5 7;
-#     6 8;
-#     7 9;
-#     8 10;
-#     9 11;
-#     10 12;
-#     11 13;
-#     12 14;
-#     13 15;
-#     14 16;
-#     15 17;
-#     16 18;
-#     17 19;
-#     18 20;
-#     ] 
+bands = [ # 3 second
+    1 3; # stepped bands
+    2 4;
+    3 5;
+    4 6;
+    5 7;
+    6 8;
+    7 9;
+    8 10;
+    9 11;
+    10 12;
+    11 13;
+    12 14;
+    13 15;
+    14 16;
+    15 17;
+    16 18;
+    17 19;
+    18 20;
+    ] 
 # bands = [ # 3 second evens (odd band centers) for micrometrics
 #     4 6;
 #     6 8;
