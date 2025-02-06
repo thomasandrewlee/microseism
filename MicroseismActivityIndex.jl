@@ -58,7 +58,7 @@ spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW_SACPZ.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_SACPZ.jld")
 spect_save_as_mat = false
 seisreadmode = "standard"
 #seisreadmode = "rickmicrometric" # input files for aster et al. processing
@@ -126,15 +126,15 @@ Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz pea
 vel2amp = true # convert velocity to amplitude
 trimFimmediately = true # trim the spectF to plot_f_range (plot_f_range must not be empty) 
 padwith = NaN # NaN recommended!!!
-swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
-sstep = Dates.Minute(15) # window step
-cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+# swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
+# sstep = Dates.Minute(15) # window step
+# cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 # swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
-# swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
-# sstep = Dates.Minute(15) # window step
-# cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
+sstep = Dates.Minute(15) # window step
+cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 combineComps = false # turn on to combine data files (for legacy data)
 seasonal_avg_fourier = 4 # this supercedes average setting, 0 means try the average, 1 is the fundamental, 2 is first overtone, N is N-1 overtone
 DaysInYear = 365.2422 # tropical year in days
