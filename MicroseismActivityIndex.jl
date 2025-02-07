@@ -834,7 +834,7 @@ if !go_to_results
         global spectP0 = deepcopy(spectD)
         # make spectD a matrix
         spectD = [reshape(spectD[1].^10,1,length(spectD[1]))]
-    elseif seisreadmode == "rickmicrometric" | seisreadmode == "TALmicrometric"
+    elseif (seisreadmode == "rickmicrometric") | (seisreadmode == "TALmicrometric")
         # read in PSD sums from rick / adam for the ASter et al. multidecadal
         global names = ["HRV.00"]
         global slat = [42.5064]
