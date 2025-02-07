@@ -53,9 +53,10 @@ c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standar
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_SACPZ.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
-readin_new = "standard" # regular way from MicroseismActivityIndex.jl
-#readin_new = "rickmicrometric" # convert to velocity and divide into bands
+#readin_new = "standard" # regular way from MicroseismActivityIndex.jl
+readin_new = "rickmicrometric" # convert to velocity and divide into bands
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
