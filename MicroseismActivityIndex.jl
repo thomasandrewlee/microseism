@@ -45,7 +45,7 @@ using RobustLeastSquares
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "TEST20250116_RMW"
+cRunName = "TEST_MICROMETRIC_MOD"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_2021-23.txt") # HURDAT file
@@ -58,16 +58,18 @@ spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_SACPZ.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
 spect_save_as_mat = false
-seisreadmode = "standard"
+#seisreadmode = "standard"
 #seisreadmode = "rickmicrometric" # input files for aster et al. processing
+seisreadmode = "TALmicrometric" # modified rick micrometric with more bands
 #seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
-micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
+#micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
+micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV__")
 #station_gains_file = [] # use this empty to avoid correcting gains
 station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
 station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
-station_gains_SACPZ = true # if the gains are in a SAC PZ format
+station_gains_SACPZ = false # if the gains are in a SAC PZ format
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
@@ -832,12 +834,17 @@ if !go_to_results
         global spectP0 = deepcopy(spectD)
         # make spectD a matrix
         spectD = [reshape(spectD[1].^10,1,length(spectD[1]))]
-    elseif seisreadmode == "rickmicrometric" 
+    elseif seisreadmode == "rickmicrometric" | seisreadmode == "TALmicrometric"
         # read in PSD sums from rick / adam for the ASter et al. multidecadal
         global names = ["HRV.00"]
         global slat = [42.5064]
         global slon = [-71.5583]
-        global spectF = [1 ./(19:-2:5)] # band centers (freq)
+        if seisreadmode == "TALmicrometric"
+            # modified PSD similar to rick micrometric but with more bands 
+            global spectF = [1 ./(30:-1:2)] # new band centers
+        else # standard micrometric band centers for Aster et al.
+            global spectF = [1 ./(19:-2:5)] # band centers (freq)
+        end
         global spectD = []
         global spectT = []
         ln = open(micrometric_input_File) do f
