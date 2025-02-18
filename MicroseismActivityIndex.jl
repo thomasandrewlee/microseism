@@ -45,20 +45,21 @@ using RobustLeastSquares
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "TEST_MICROMETRIC_MOD"
+cRunName = "TEST_50prct_12hr_STANDARD"
 clearResults = false
 # data locations
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_2021-23.txt") # HURDAT file
 #cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
 #cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton_even.txt")
-spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
-#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_jld = string(user_str,"Downloads/1936_40_jld/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_50prct_12hr_MICROMETRICMOD.jld")
 spect_save_as_mat = false
 #seisreadmode = "standard"
 #seisreadmode = "rickmicrometric" # input files for aster et al. processing
@@ -66,10 +67,10 @@ seisreadmode = "TALmicrometric" # modified rick micrometric with more bands
 #seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
 #micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
 micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV__")
-#station_gains_file = [] # use this empty to avoid correcting gains
-station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
-station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
-station_gains_SACPZ = false # if the gains are in a SAC PZ format
+station_gains_file = [] # use this empty to avoid correcting gains
+# station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
+#station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
+#station_gains_SACPZ = true # if the gains are in a SAC PZ format
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
 #METAR_jld_file = string(user_str,"Downloads/baro_METAR/BOS_baro_19431121_20240625.jld") # METAR baro data from readMETAR.jl 
@@ -99,7 +100,7 @@ stime = Dates.DateTime(1988,1,1) # start time for spectra
 etime = Dates.DateTime(2024,1,1) # end time for spectra 
 # stime = Dates.DateTime(2021,1,1) # start time for spectra 
 # etime = Dates.DateTime(2024,1,1) # end time for spectra 
-# stime = Dates.DateTime(1936,1,1) # start time for spectra 
+# stime = Dates.DateTime(1935,1,1) # start time for spectra 
 # etime = Dates.DateTime(1941,1,1) # end time for spectra 
 # stime = Dates.DateTime(2024,10,1) # start time for spectra 
 # etime = Dates.DateTime(2024,11,1) # end time for spectra 
@@ -125,18 +126,18 @@ Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz pea
 # Nthrow = 0 # number of pts at beginning of spectra to throw out to avoid 0Hz peak
 
 # seismic culling and processing
-vel2amp = true # convert velocity to amplitude
+vel2amp = false # convert velocity to amplitude
 trimFimmediately = true # trim the spectF to plot_f_range (plot_f_range must not be empty) 
 padwith = NaN # NaN recommended!!!
-# swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
-# sstep = Dates.Minute(15) # window step
-# cull_ratio = 0.03 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
+sstep = Dates.Minute(15) # window step
+cull_ratio = 0.5 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 # swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
-swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
-sstep = Dates.Minute(15) # window step
-cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+# swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
+# sstep = Dates.Minute(15) # window step
+# cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 combineComps = false # turn on to combine data files (for legacy data)
 seasonal_avg_fourier = 4 # this supercedes average setting, 0 means try the average, 1 is the fundamental, 2 is first overtone, N is N-1 overtone
 DaysInYear = 365.2422 # tropical year in days
