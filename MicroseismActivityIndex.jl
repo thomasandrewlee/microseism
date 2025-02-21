@@ -58,17 +58,17 @@ spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_50prct_2hr_MICROMETRICMOD.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_30prct_2hr_STANDARD.jld")
 spect_save_as_mat = false
-#seisreadmode = "standard"
+seisreadmode = "standard"
 #seisreadmode = "rickmicrometric" # input files for aster et al. processing
-seisreadmode = "TALmicrometric" # modified rick micrometric with more bands
+#seisreadmode = "TALmicrometric" # modified rick micrometric with more bands
 #seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
 #micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
 micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV__")
-station_gains_file = [] # use this empty to avoid correcting gains
+#station_gains_file = [] # use this empty to avoid correcting gains
 # station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
-#station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
+station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
 station_gains_SACPZ = true # if the gains are in a SAC PZ format
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
@@ -133,7 +133,7 @@ padwith = NaN # NaN recommended!!!
 # cull_ratio = 0.5 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 swind = Dates.Minute(120) # window in which to get representative spectra (set to 0 to skip culling)
 sstep = Dates.Minute(15) # window step
-cull_ratio = 0.5 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+cull_ratio = 0.3 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 # swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)

@@ -45,7 +45,7 @@ using LombScargle
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med14_steps3_97/")
 c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_micrometricTAL/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_theoretical/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_new/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -56,16 +56,16 @@ c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standar
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_SACPZ.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_50prct_12hr_STANDARD.jld")
+c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_30prct_2hr_STANDARD.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_50prct_12hr_MICROMETRICMOD.jld")
-c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1935_1940_spectsave_50prct_12hr_STANDARD.jld")
+c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1935_1940_spectsave_30prct_2hr_STANDARD.jld")
 readin_new = "standard" # regular way from MicroseismActivityIndex.jl
 #readin_new = "rickmicrometric" # convert to velocity and divide into bands
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
 # path to txfr fcn
 c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M5.5_LPZ_BHZ_ampscl_stack10_microcorr/txfr.jld") 
-use_empirical = false # otherwise use the theoretical fit
+use_empirical = true # otherwise use the theoretical fit
 smoothing = 0.03 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
