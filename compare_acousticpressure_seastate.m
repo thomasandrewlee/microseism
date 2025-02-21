@@ -26,7 +26,7 @@ close all
 % data sources
 c_MERDAT_COP = '/Users/tl7869/Desktop/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 useww3 = true; % also compare ww3 data
-c_MAT_WW3 = '/Users/tl7869/Desktop/WW3_OUT_REF102040/';
+c_MAT_WW3 = '/Users/tl7869/Desktop/WW3_OUT_NEW/';
 c_output = '/Users/tl7869/Desktop/acoustic_v_surface/';
 % psd to use
 use50 = true; % otherwise use 95
@@ -351,37 +351,33 @@ if useww3
     merclim.mean = nan(length(freq),length(climctrs)); 
     merclim.std = nan(length(freq),length(climctrs));
     % convert times to doy
-    ww3doy = day(datetime(ww3t,'ConvertFrom','datenum'),'DayofYear');
-    merdoy = day(times,'DayofYear');
+    doy = day(times,'DayofYear');
     for i = 1:length(climctrs)
         % get endpoints
         doy0 = climctrs(i) - climwind/2; % start day
         doy1 = climctrs(i) + climwind/2; % end day
         % get indices
         if doy0>=0 & doy1<=365 % normal
-            ww3idx = find(ww3doy>=doy0 & ww3doy<=doy1);
-            meridx = find(merdoy>=doy0 & merdoy<=doy1);
+            doyidx = find(doy>=doy0 & doy<=doy1);
         elseif doy1>365 % wrap over end
-            ww3idx = find(ww3doy>=doy0 | ww3doy<=doy1-365);
-            meridx = find(merdoy>=doy0 | merdoy<=doy1-365);
+            doyidx = find(doy>=doy0 | doy<=doy1-365);
         elseif doy0<0 % wrap over beginning
-            ww3idx = find(ww3doy>=doy0+365 | ww3doy<=doy1);
-            meridx = find(merdoy>=doy0+365 | merdoy<=doy1);
+            doyidx = find(doy>=doy0+365 | doy<=doy1);
         else
             error('HOW DID YOU EVEN GET HERE?')
         end
         % compute the median, 5th and 95th percentile, mean,and std
-        ww3clim.median(:,i) = median(ww3spect(:,ww3idx),2,"omitnan");
-        ww3clim.p5(:,i) = prctile(ww3spect(:,ww3idx),5,2);
-        ww3clim.p95(:,i) = prctile(ww3spect(:,ww3idx),95,2);
-        ww3clim.mean(:,i) = mean(ww3spect(:,ww3idx),2,"omitnan");
-        ww3clim.std(:,i) = std(ww3spect(:,ww3idx),0,2,"omitnan");
+        ww3clim.median(:,i) = median(ww3spect(:,doyidx),2,"omitnan");
+        ww3clim.p5(:,i) = prctile(ww3spect(:,doyidx),5,2);
+        ww3clim.p95(:,i) = prctile(ww3spect(:,doyidx),95,2);
+        ww3clim.mean(:,i) = mean(ww3spect(:,doyidx),2,"omitnan");
+        ww3clim.std(:,i) = std(ww3spect(:,doyidx),0,2,"omitnan");
         % same for mermaid
-        merclim.median(:,i) = median(merspect(:,meridx),2,"omitnan");
-        merclim.p5(:,i) = prctile(merspect(:,meridx),5,2);
-        merclim.p95(:,i) = prctile(merspect(:,meridx),95,2);
-        merclim.mean(:,i) = mean(merspect(:,meridx),2,"omitnan");
-        merclim.std(:,i) = std(merspect(:,meridx),0,2,"omitnan");
+        merclim.median(:,i) = median(merspect(:,doyidx),2,"omitnan");
+        merclim.p5(:,i) = prctile(merspect(:,doyidx),5,2);
+        merclim.p95(:,i) = prctile(merspect(:,doyidx),95,2);
+        merclim.mean(:,i) = mean(merspect(:,doyidx),2,"omitnan");
+        merclim.std(:,i) = std(merspect(:,doyidx),0,2,"omitnan");
     end
     % make seasonality plots for ww3
     hf = figure;
