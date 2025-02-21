@@ -13,14 +13,15 @@ clear all;
 clc;
 
 %% settings
-c_bathy = ['/Users/tl7869/Research/GEBCO_Bathymetry/' ...
+user_str = '/Users/tl7869/';
+c_bathy = [user_str,'Research/GEBCO_Bathymetry/' ...
     'gebco_2024/GEBCO_2024.nc'];
 bathy_deg_size = 0.5; % size of bathymetry grid boxes in degrees, will interpolate if need 
-c_output = '/Users/tl7869/Downloads/PrimaryCoef0.5/';
-c_lindisp = '/Users/tl7869/Desktop/MicroseismIntegration/lindisptables/';
+c_output = [user_str,'Downloads/PrimaryCoef0.5/'];
+c_lindisp = [user_str,'Desktop/MicroseismIntegration/lindisptables/'];
 freqs = 1 ./ [1:0.5:40];
 percents = 0.1:0.1:5; % percent change in microseism period
-Nh = 10000; % depth and wavenumber discretization
+Nh = 5000; % depth and wavenumber discretization
 k = 2*pi*(1./(1:0.2:1000)); % 1m to 1000m wavelength
 
 
