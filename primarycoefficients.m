@@ -13,11 +13,12 @@ clear all;
 clc;
 
 %% settings
-user_str = '/Users/tl7869/';
+user_str = '/Users/thomaslee/';
 c_bathy = [user_str,'Research/GEBCO_Bathymetry/' ...
     'gebco_2024/GEBCO_2024.nc'];
 bathy_deg_size = 0.5; % size of bathymetry grid boxes in degrees, will interpolate if need 
-c_ww3 = [user_str,'Downloads/WW3_OUT_NEW_EF/'];
+c_spect = [user_str,'Downloads/WW3_OUT_NEW_EF/GLOB/spectras.mat'];
+% the ww3 spectra files should be from readww3.m and makeglobalww3spect.m
 c_output = [user_str,'Downloads/PrimaryCoef0.5/'];
 c_lindisp = [user_str,'Desktop/MicroseismIntegration/lindisptables/'];
 freqs = 1 ./ [1:0.5:40];
@@ -31,11 +32,11 @@ if ~isfolder(c_output)
     mkdir(c_output);
 end
 
-% check for save file
+%% check for save file
 if isfile([c_output,'Bweight.mat'])
     load([c_output,'Bweight.mat']);
 else
-    %% read bathymetry
+    % read bathymetry
     disp('Info for bathy file is:')
     ncdisp(c_bathy)
     % get varnames and add to Ctmp struct
@@ -72,7 +73,7 @@ else
     savefig([c_output,'bathy'],hf.Number,'pdf');
     close(hf);
     
-    %% compute wavenumbers
+    % compute wavenumbers
     % convert bathy to h linspaced
     h = linspace(0,double(-min(bathy,[],"all")),Nh);
     % linspace wavenumbers
@@ -117,7 +118,7 @@ else
         end
     end
     
-    %% compute bathymetric effect
+    % compute bathymetric effect
     Bweight = nan(size(kdat));
     for i = 1:length(blon)
         for j = 1:length(blat)
@@ -130,6 +131,8 @@ else
     % save data
     save([c_output,'Bweight.mat'],'Bweight','blon','blat','freqs','-mat','-v7.3');
 end
+
+%% load the ocean wave spectra
 
 %% plot
 %clow = min(log10(Bweight),[],"all","omitnan");
