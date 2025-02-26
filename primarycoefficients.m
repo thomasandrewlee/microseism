@@ -20,14 +20,15 @@ bathy_deg_size = 0.5; % size of bathymetry grid boxes in degrees, will interpola
 c_spect = [user_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
 % the ww3 spectra files should be from readww3.m and makeglobalww3spect.m
     % leave empty string to skip spectra 
-c_output = [user_str,'Downloads/PrimaryCoef0.5/'];
+c_output = [user_str,'Downloads/PrimaryCoefFitRun/'];
 c_lindisp = [user_str,'Desktop/MicroseismIntegration/lindisptables/'];
-freqs = 1 ./ [1:0.5:40];
-percents = 0.1:0.1:5; % percent change in microseism period
+freqs = 1 ./ [4:0.25:21];
+percents = 0.001:0.0005:0.25; % percent change in microseism period
+%percents = 0.1:0.1:5; % percent change in microseism period
 Nh = 5000; % depth and wavenumber discretization
 k = 2*pi*(1./(1:0.2:1000)); % 1m to 1000m wavelength
 Nplotlines = 5; % number of lines to plot in percent max
-
+violincompcutoff = 10; % lower period bound in seconds
 
 %setup output
 if ~isfolder(c_output)
@@ -251,12 +252,6 @@ ha.YLabel.String = 'Percent Increase in Period';
 savefig([c_output,'increasemap'],hf.Number,'pdf');
 close(hf);
 
-%% read rick's violin plot data
-c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/violinplot.mat'];
-if 
-load([])
-end
-
 %% load the ocean wave spectra and perturb it
 if ~isempty(c_spect)
     % load spectra
@@ -277,9 +272,33 @@ if ~isempty(c_spect)
     % compute the energy reaching the seafloor
     Dseaflr = 10*log10(Bsumspect.*(10.^(Dspect/10)));
 
-    % perturb the spectra by percents (increase in period)
+    %% read rick's violin plot data
+    c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/violinplot.mat'];
+    if isfile(c_violindat)
+        tmp = load(c_violindat);
+        hfv = figure; % persistent violin plot handle
+        hav = axes(hfv);
+        scatter(hav,tmp.P,tmp.M,'k.');
+        % labels
+        hav.Title.String = 'Global Observations';
+        hav.XLabel.String = 'Period (s)';
+        hav.YLabel.String = '% Relative to the Median per Year';
+        hold(hav,'on');
+        plot(hav,tmp.psd_periods,median(tmp.M),'k--');
+        axis(hav,'padded');
+        % put the seafloor ratios for stretch, shift, and scale on this along
+        % with best fit as we calculate things
+        % for this, we need the matching indices in fspect
+        violincompcutoff = 10; % lower period bound in seconds
+        psdidx = find(tmp.psd_periods >= violincompcutoff); % get psd periods relevant
+        vfreqs = 1./tmp.psd_periods(psdidx);
+        vdata = median(tmp.M(:,psdidx));
+    end
+
+    %% perturb the spectra by percents (increase in period)
     Dseaflrpert = nan(length(percents),length(Dseaflr));
     Dspectpert = nan(length(percents),length(Dseaflr));
+    stretchfit = nan(length(percents),1);
     for i = 1:length(percents)
         % perturb
         fnew = 1./((1./fspect)*(1+percents(i)/100));
@@ -292,7 +311,29 @@ if ~isempty(c_spect)
         Dspectpert(i,:) = Dspecttmp; 
         % add new values of seafloor energy
         Dseaflrpert(i,:) = 10*log10(Bsumspect.*(10.^(Dspecttmp/10)));
+        % compute the fit of this percent perturbation to the violin dat
+        tmpratio = ((10.^(Dseaflrpert(i,:)/10))./(10.^(Dseaflr'/10))-1)*100;
+        % interpolate to the violin dat freqs
+        tmpDpert = interp1(fspect,tmpratio,vfreqs);
+        % compute L1
+        stretchfit(i) = sum(abs(tmpDpert-vdata));
     end
+    % add best fitting perturbation to the violin plot
+    [minL,minidx] = min(stretchfit);
+    hpstrtch = plot(hav,1./fspect,...
+        ((10.^(Dseaflrpert(minidx,:)/10))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
+    lgdstrstrtch = [num2str(percents(minidx)),'% Stretch'];
+    % plot fit evolution
+    hf = figure; ha = axes(hf);
+    plot(ha,percents,stretchfit,'k-');
+    hold(ha,'on');
+    hp = scatter(percents(minidx),minL,'r*');
+    legend(ha,hp,['Minima of ',num2str(minL),' @',num2str(percents(minidx))]);
+    ha.Title.String = 'Fit as Function of % Stretch';
+    ha.XLabel.String = '% Stretch';
+    ha.YLabel.String = 'Fit (L1)';
+    savefig([c_output,'fit_stretch'],hf.Number,'pdf');
+    close(hf);
 
     % plot change with perturbation
     if length(percents)>Nplotlines
@@ -349,7 +390,30 @@ if ~isempty(c_spect)
         Dspectpert(i,:) = Dspecttmp; 
         % add new values of seafloor energy
         Dseaflrpert(i,:) = 10*log10(Bsumspect.*(10.^(Dspecttmp/10)));
+        % compute the fit of this percent perturbation to the violin dat
+        tmpratio = ((10.^(Dseaflrpert(i,:)/10))./(10.^(Dseaflr'/10))-1)*100;
+        % interpolate to the violin dat freqs
+        tmpDpert = interp1(fspect,tmpratio,vfreqs);
+        % compute L1
+        stretchfit(i) = sum(abs(tmpDpert-vdata));
     end
+    % add best fitting perturbation to the violin plot
+    [minL,minidx] = min(stretchfit);
+    hpshft = plot(hav,1./fspect,...
+        ((10.^(Dseaflrpert(minidx,:)/10))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
+    lgdstrshft = [num2str((1/median(fspect))*(percents(minidx)/100)),' Shift (s)'];
+    % plot fit evolution
+    hf = figure; ha = axes(hf);
+    plot(ha,(1/median(fspect))*(percents/100),stretchfit,'k-');
+    hold(ha,'on');
+    hp = scatter((1/median(fspect))*(percents(minidx)/100),minL,'r*');
+    legend(ha,hp,['Minima of ',num2str(minL),' @',...
+        num2str((1/median(fspect))*(percents(minidx)/100))]);
+    ha.Title.String = 'Fit as Function of Shift';
+    ha.XLabel.String = 'Shift (s)';
+    ha.YLabel.String = 'Fit (L1)';
+    savefig([c_output,'fit_shift'],hf.Number,'pdf');
+    close(hf);
 
     % plot change with perturbation
     if length(percents)>Nplotlines
@@ -396,12 +460,37 @@ if ~isempty(c_spect)
     % perturb the spectra by scaling the amplitude
     Dseaflrpert = nan(length(percents),length(Dseaflr));
     Dspectpert = nan(length(percents),length(Dseaflr));
-    for i = 1:length(percents)    
+    for i = 1:length(percents)
         % save
-        Dspectpert(i,:) = Dspecttmp.*(1+(percents(i)/100)); 
+        Dspectpert(i,:) = 10*log10((10.^(Dspect/10)).*(1+(percents(i)/100))); 
         % add new values of seafloor energy
-        Dseaflrpert(i,:) = 10*log10(Bsumspect.*(10.^(Dspecttmp/10)));
+        Dseaflrpert(i,:) = 10*log10(Bsumspect.*(10.^(Dspectpert(i,:)'/10)));
+        % compute the fit of this percent perturbation to the violin dat
+        tmpratio = ((10.^(Dseaflrpert(i,:)/10))./(10.^(Dseaflr'/10))-1)*100;
+        % interpolate to the violin dat freqs
+        tmpDpert = interp1(fspect,tmpratio,vfreqs);
+        % compute L1
+        stretchfit(i) = sum(abs(tmpDpert-vdata));
     end
+    % add best fitting perturbation to the violin plot
+    [minL,minidx] = min(stretchfit);
+    hpscale = plot(hav,1./fspect,...
+        ((10.^(Dseaflrpert(minidx,:)/10))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
+    lgdstrscl = [num2str(percents(minidx)),'% Scale'];
+    legend(hav,[hpstrtch,hpshft,hpscale],{lgdstrstrtch,lgdstrshft,lgdstrscl},...
+        'Location','southoutside');
+    savefig([c_output,'fit_violin'],hfv.Number,'pdf');
+    % plot fit evolution
+    hf = figure; ha = axes(hf);
+    plot(ha,percents,stretchfit,'k-');
+    hold(ha,'on');
+    hp = scatter(percents(minidx),minL,'r*');
+    legend(ha,hp,['Minima of ',num2str(minL),' @',num2str(percents(minidx))]);
+    ha.Title.String = 'Fit as Function of % Scale';
+    ha.XLabel.String = '% Scale';
+    ha.YLabel.String = 'Fit (L1)';
+    savefig([c_output,'fit_scale'],hf.Number,'pdf');
+    close(hf);
 
     % plot change with perturbation
     if length(percents)>Nplotlines
