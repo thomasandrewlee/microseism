@@ -22,13 +22,18 @@ c_spect = [user_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
     % leave empty string to skip spectra 
 c_output = [user_str,'Downloads/PrimaryCoefFitRun/'];
 c_lindisp = [user_str,'Desktop/MicroseismIntegration/lindisptables/'];
-freqs = 1 ./ [4:0.25:21];
-percents = 0.001:0.0005:0.25; % percent change in microseism period
-%percents = 0.1:0.1:5; % percent change in microseism period
+% freqs = 1 ./ [4:0.25:21];
+freqs = 1 ./ [4:1:20];
+percents = 0.0001:0.0001:0.05; % percent change in microseism period
+% freqs = 1 ./ [1:0.5:40];
+% percents = 0.1:0.1:5; % percent change in microseism period
 Nh = 5000; % depth and wavenumber discretization
 k = 2*pi*(1./(1:0.2:1000)); % 1m to 1000m wavelength
 Nplotlines = 5; % number of lines to plot in percent max
-violincompcutoff = 10; % lower period bound in seconds
+violincompcutoff = 12; % lower period bound in seconds
+scale0 = 0.09; % starting scale value to use in percent
+gif_fnames = false; % write file names for alphabetical ordering across varied systems
+squareK = true; % square the transfer function (K) values given in Bweight
 
 %setup output
 if ~isfolder(c_output)
@@ -135,6 +140,10 @@ else
     save([c_output,'Bweight.mat'],'Bweight','blon','blat','freqs','-mat','-v7.3');
 end
 
+if squareK
+    Bweight = Bweight.^2;
+end
+
 
 %% plot
 %clow = min(log10(Bweight),[],"all","omitnan");
@@ -148,16 +157,31 @@ for i = 1:length(freqs)
     clim(ha1,[clow,chigh]);
     cb1 = colorbar(); cb1.Label.String = 'Log-Scale Weight';
     axis image;
-    ha1.Title.String = ['Bathymetric Weighting ',num2str(1/freqs(i)),'s'];
+    ha1.Title.String = ['Bathymetric Weighting ',num2str(1/freqs(i),'%05.2f'),'s'];
+    bookfonts_TNR;
     ha2 = subplot(2,1,2);
     imagesc(ha2,blon,blat,Bweight(:,:,i)');
     ha2.YDir = 'normal';
     clim(ha2,[10^clow,10^chigh]);
     cb2 = colorbar(); cb2.Label.String = 'Linear Weight';
     axis image;
-    savefig([c_output,'weight_',num2str(1/freqs(i),'%05.2f'),'s'],hf.Number,'pdf');
+    bookfonts_TNR;
+    if gif_fnames
+        savefig([c_output,num2str(i,'%02i')],hf.Number,'png');
+    else
+        %savefig([c_output,'weight_',num2str(1/freqs(i),'%05.2f'),'s'],hf.Number,'pdf');
+        fstr = [c_output,'weight_',num2str(1/freqs(i),'%05.2f'),'s.eps'];
+        exportgraphics(hf,fstr,'ContentType','vector','BackgroundColor','none');
+    end
     close(hf);
 end
+
+%% make lat plot
+plot(blat,tmp,'k-','linewidth',1.5);
+xlabel('Latitude'); ylabel('Primary Coupling Coefficient');
+title('Average Coupling By Latitude');
+fontbook_TNR
+exportgraphics(gcf,[c_output,'latweight.eps','ContentType','vector','BackgroundColor','none']);
 
 %% compute the quantitative summing effect
 % correct for round earth
@@ -181,16 +205,30 @@ BsumS = BsumS / Ball;
 BsumN = BsumN / Ball;
 % plot
 hf = figure; ha = axes(hf);
-plot(ha,1./freqs,Bsum,'ok-');
+plot(ha,1./freqs,Bsum,'.k-');
 hold on
-plot(ha,1./freqs,BsumN,'or-');
-plot(ha,1./freqs,BsumS,'ob-');
+plot(ha,1./freqs,BsumN,'.r-');
+plot(ha,1./freqs,BsumS,'.b-');
 legend('All','Northern','Southern','Location','northwest');
 ha.Title.String = 'Effect of Increasing Period';
 ha.XLabel.String = 'Period (s)';
 ha.YLabel.String = 'Fraction of Wave Energy Converted to Primary Microseism';
 axis padded;
 savefig([c_output,'freqresp'],hf.Number,'pdf');
+close(hf);
+
+% plot rate of change
+hf = figure; ha = axes(hf);
+plot(ha,1./freqs(2:end),diff(Bsum)./diff(1./freqs),'.k-');
+hold on
+plot(ha,1./freqs(2:end),diff(BsumN)./diff(1./freqs),'.r-');
+plot(ha,1./freqs(2:end),diff(BsumS)./diff(1./freqs),'.b-');
+legend('All','Northern','Southern','Location','northwest');
+ha.Title.String = 'Effect of Increasing Period';
+ha.XLabel.String = 'Period (s)';
+ha.YLabel.String = 'd(Fraction of Wave Energy Converted to Primary Microseism)/dT';
+axis padded;
+savefig([c_output,'freqrespprime'],hf.Number,'pdf');
 close(hf);
 
 %% compute the effect of a % change as a function of frequency
@@ -222,10 +260,10 @@ for j = 1:length(freqs)
     BprctN(:,j) = tmpprctN;
     % plot
     hf = figure; ha = axes(hf);
-    plot(ha,percents,tmpprct,'ok-');
+    plot(ha,percents,tmpprct,'.k-');
     hold on
-    plot(ha,percents,tmpprctN,'or-');
-    plot(ha,percents,tmpprctS,'ob-');
+    plot(ha,percents,tmpprctN,'.r-');
+    plot(ha,percents,tmpprctS,'.b-');
     legend('All','Northern','Southern','Location','northwest');
     ha.Title.String = ['Effect of Increasing Period above ',num2str(1/freqs(j)),'s'];
     ha.XLabel.String = ['Percent Increase in Period above ',num2str(1/freqs(j)),'s'];
@@ -241,6 +279,7 @@ cb = colorbar; cb.Label.String = 'Log10 Percent Increase in Microseism Energy';
 ha.Title.String = 'Microseism Energy Response to Increase in Period';
 ha.XLabel.String = 'Period (s)';
 ha.YLabel.String = 'Percent Increase in Period';
+ha.YDir = 'normal';
 savefig([c_output,'percentmap'],hf.Number,'pdf');
 close(hf);
 hf = figure; ha = axes(hf);
@@ -293,6 +332,51 @@ if ~isempty(c_spect)
         psdidx = find(tmp.psd_periods >= violincompcutoff); % get psd periods relevant
         vfreqs = 1./tmp.psd_periods(psdidx);
         vdata = median(tmp.M(:,psdidx));
+
+        % plot violin again while connecting stations with lines
+        hf = figure; ha = axes(hf);
+        plot(ha,tmp.P',tmp.M','.-','LineWidth',0.5);
+        ha.Title.String = 'Global Observations';
+        ha.XLabel.String = 'Period (s)';
+        ha.YLabel.String = '% Relative to the Median per Year';
+        hold(ha,'on');
+        plot(ha,tmp.psd_periods,median(tmp.M),'k--','LineWidth',2);
+        axis(ha,'padded');
+        savefig([c_output,'violin_lines'],hf.Number,'pdf');
+        close(hf);
+
+        % compute the trends for each station and then the median of the
+        % trends
+        vtrend = nan(size(tmp.M,1),2);
+        for i = 1:size(tmp.M,1)
+            % compute linear trends for band above cutoff
+            p = polyfit(tmp.psd_periods(psdidx),tmp.M(i,psdidx),1); % descending order of power for p
+            vtrend(i,1) = p(1); % x term
+            vtrend(i,2) = p(2); % c term
+        end
+
+        % plot the various trends as histogram (violin_linear_histogram)
+        hf = figure;
+        ha1 = subplot(2,1,1);
+        histogram(vtrend(:,1),15);
+        ha1.Title.String = 'Microseism Increase Rates as a Function of Period';
+        ha1.XLabel.String = 'Slope: (%/yr)/s';
+        ha2 = subplot(2,1,2);
+        histogram(vtrend(:,2),15);
+        ha2.XLabel.String =  'Intercept: %/yr';
+        savefig([c_output,'violin_linear_hist'],hf.Number,'pdf');
+        close(hf);
+        
+        % plot various trends on violin_linear
+        xtmp = [tmp.psd_periods(psdidx(1)),tmp.psd_periods(psdidx(end))];
+        hf = figure; ha = axes(hf);
+        plot(xtmp,[vtrend*[xtmp(1); 1] vtrend*[xtmp(2); 1]]);
+        hold(ha,'on');
+        plot(xtmp,[prctile(vtrend,50)*[xtmp(1); 1] prctile(vtrend,50)*[xtmp(2); 1]],...
+            'k-','LineWidth',2);
+        savefig([c_output,'violin_linear'],hf.Number,'pdf');
+        close(hf);
+
     end
 
     %% perturb the spectra by percents (increase in period)
@@ -312,17 +396,21 @@ if ~isempty(c_spect)
         % add new values of seafloor energy
         Dseaflrpert(i,:) = 10*log10(Bsumspect.*(10.^(Dspecttmp/10)));
         % compute the fit of this percent perturbation to the violin dat
-        tmpratio = ((10.^(Dseaflrpert(i,:)/10))./(10.^(Dseaflr'/10))-1)*100;
+        tmpratio = ((((scale0/100)+1)*(10.^(Dseaflrpert(i,:)/10)))./(10.^(Dseaflr'/10))-1)*100;
         % interpolate to the violin dat freqs
         tmpDpert = interp1(fspect,tmpratio,vfreqs);
         % compute L1
-        stretchfit(i) = sum(abs(tmpDpert-vdata));
+        stretchfit(i) = sum(abs(tmpDpert-vdata).^2);
     end
     % add best fitting perturbation to the violin plot
     [minL,minidx] = min(stretchfit);
     hpstrtch = plot(hav,1./fspect,...
-        ((10.^(Dseaflrpert(minidx,:)/10))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
+        ((((scale0/100)+1)*(10.^(Dseaflrpert(minidx,:)/10)))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
     lgdstrstrtch = [num2str(percents(minidx)),'% Stretch'];
+    % export this data for rick's
+    xdat = 1./fspect;
+    ydat = ((((scale0/100)+1)*(10.^(Dseaflrpert(minidx,:)/10)))./(10.^(Dseaflr'/10))-1)*100;
+    save([c_output,'stretch_data.mat'],'xdat','ydat')
     % plot fit evolution
     hf = figure; ha = axes(hf);
     plot(ha,percents,stretchfit,'k-');
@@ -331,7 +419,7 @@ if ~isempty(c_spect)
     legend(ha,hp,['Minima of ',num2str(minL),' @',num2str(percents(minidx))]);
     ha.Title.String = 'Fit as Function of % Stretch';
     ha.XLabel.String = '% Stretch';
-    ha.YLabel.String = 'Fit (L1)';
+    ha.YLabel.String = 'Fit (L2)';
     savefig([c_output,'fit_stretch'],hf.Number,'pdf');
     close(hf);
 
@@ -391,7 +479,7 @@ if ~isempty(c_spect)
         % add new values of seafloor energy
         Dseaflrpert(i,:) = 10*log10(Bsumspect.*(10.^(Dspecttmp/10)));
         % compute the fit of this percent perturbation to the violin dat
-        tmpratio = ((10.^(Dseaflrpert(i,:)/10))./(10.^(Dseaflr'/10))-1)*100;
+        tmpratio = ((((scale0/100)+1)*(10.^(Dseaflrpert(i,:)/10)))./(10.^(Dseaflr'/10))-1)*100;
         % interpolate to the violin dat freqs
         tmpDpert = interp1(fspect,tmpratio,vfreqs);
         % compute L1
@@ -400,7 +488,7 @@ if ~isempty(c_spect)
     % add best fitting perturbation to the violin plot
     [minL,minidx] = min(stretchfit);
     hpshft = plot(hav,1./fspect,...
-        ((10.^(Dseaflrpert(minidx,:)/10))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
+        ((((scale0/100)+1)*(10.^(Dseaflrpert(minidx,:)/10)))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
     lgdstrshft = [num2str((1/median(fspect))*(percents(minidx)/100)),' Shift (s)'];
     % plot fit evolution
     hf = figure; ha = axes(hf);
@@ -411,7 +499,7 @@ if ~isempty(c_spect)
         num2str((1/median(fspect))*(percents(minidx)/100))]);
     ha.Title.String = 'Fit as Function of Shift';
     ha.XLabel.String = 'Shift (s)';
-    ha.YLabel.String = 'Fit (L1)';
+    ha.YLabel.String = 'Fit (L2)';
     savefig([c_output,'fit_shift'],hf.Number,'pdf');
     close(hf);
 
@@ -466,7 +554,7 @@ if ~isempty(c_spect)
         % add new values of seafloor energy
         Dseaflrpert(i,:) = 10*log10(Bsumspect.*(10.^(Dspectpert(i,:)'/10)));
         % compute the fit of this percent perturbation to the violin dat
-        tmpratio = ((10.^(Dseaflrpert(i,:)/10))./(10.^(Dseaflr'/10))-1)*100;
+        tmpratio = ((((scale0/100)+1)*(10.^(Dseaflrpert(i,:)/10)))./(10.^(Dseaflr'/10))-1)*100;
         % interpolate to the violin dat freqs
         tmpDpert = interp1(fspect,tmpratio,vfreqs);
         % compute L1
@@ -475,7 +563,7 @@ if ~isempty(c_spect)
     % add best fitting perturbation to the violin plot
     [minL,minidx] = min(stretchfit);
     hpscale = plot(hav,1./fspect,...
-        ((10.^(Dseaflrpert(minidx,:)/10))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
+        ((((scale0/100)+1)*(10.^(Dseaflrpert(minidx,:)/10)))./(10.^(Dseaflr'/10))-1)*100,'LineWidth',1.5);
     lgdstrscl = [num2str(percents(minidx)),'% Scale'];
     legend(hav,[hpstrtch,hpshft,hpscale],{lgdstrstrtch,lgdstrshft,lgdstrscl},...
         'Location','southoutside');
@@ -488,7 +576,7 @@ if ~isempty(c_spect)
     legend(ha,hp,['Minima of ',num2str(minL),' @',num2str(percents(minidx))]);
     ha.Title.String = 'Fit as Function of % Scale';
     ha.XLabel.String = '% Scale';
-    ha.YLabel.String = 'Fit (L1)';
+    ha.YLabel.String = 'Fit (L2)';
     savefig([c_output,'fit_scale'],hf.Number,'pdf');
     close(hf);
 
