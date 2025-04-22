@@ -51,24 +51,26 @@ clearResults = false
 cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_2021-23.txt") # HURDAT file
 #cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
 #cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton_even.txt")
-spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
-#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_30prct_2hr_STANDARD.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_30prct_2hr_MICROMETRICBHZ.jld")
 spect_save_as_mat = false
-seisreadmode = "standard"
+#seisreadmode = "standard"
 #seisreadmode = "rickmicrometric" # input files for aster et al. processing
 #seisreadmode = "TALmicrometric" # modified rick micrometric with more bands
+seisreadmode = "TALmicrometricBHZ" # modified rick micrometric with lower periods (BHZ)
 #seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
 #micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
 micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV__")
-#station_gains_file = [] # use this empty to avoid correcting gains
+micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV___BHZ")
+station_gains_file = [] # use this empty to avoid correcting gains
 # station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
-station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
+#station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
 station_gains_SACPZ = true # if the gains are in a SAC PZ format
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
@@ -837,7 +839,7 @@ if !go_to_results
         global spectP0 = deepcopy(spectD)
         # make spectD a matrix
         spectD = [reshape(spectD[1].^10,1,length(spectD[1]))]
-    elseif (seisreadmode == "rickmicrometric") | (seisreadmode == "TALmicrometric")
+    elseif (seisreadmode == "rickmicrometric") | ((seisreadmode == "TALmicrometric") | (seisreadmode == "TALmicrometricBHZ"))
         # read in PSD sums from rick / adam for the ASter et al. multidecadal
         global names = ["HRV.00"]
         global slat = [42.5064]
@@ -845,6 +847,9 @@ if !go_to_results
         if seisreadmode == "TALmicrometric"
             # modified PSD similar to rick micrometric but with more bands 
             global spectF = [1 ./(30:-1:2)] # new band centers
+        elseif seisreadmode == "TALmicrometricBHZ"
+            # modified PSD similar to rick micrometric but with lower periods
+            global spectF = [1 ./(15.5:-1:2.5)] # new band centers
         else # standard micrometric band centers for Aster et al.
             global spectF = [1 ./(19:-2:5)] # band centers (freq)
         end

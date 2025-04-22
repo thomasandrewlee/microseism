@@ -125,7 +125,20 @@ else
             end
         end
     end
-    
+
+    kdat = nan([1000 2]);
+    for j = 1:1000
+        % convert height to depth
+        hq = ones(length(kq),1).*j; 
+        % get frequencies for all k at specific h
+        fq = interp2(htab,ktab,ftab,hq,kq);
+        %do 1D interp of existing freq wavenumber profile
+        ktmp = interp1(fq,kq,[1/14, 1/20],'pchip','extrap');
+        % save value
+        kdat(j,:) = ktmp;
+    end
+    bwghttmp = 1./cosh(kdat.*[1:1000;1:1000]');
+
     % compute bathymetric effect
     Bweight = nan(size(kdat));
     for i = 1:length(blon)
@@ -180,8 +193,8 @@ end
 plot(blat,tmp,'k-','linewidth',1.5);
 xlabel('Latitude'); ylabel('Primary Coupling Coefficient');
 title('Average Coupling By Latitude');
-fontbook_TNR
-exportgraphics(gcf,[c_output,'latweight.eps','ContentType','vector','BackgroundColor','none']);
+bookfonts_TNR
+exportgraphics(gcf,[c_output,'latweight.eps'],'ContentType','vector','BackgroundColor','none');
 
 %% compute the quantitative summing effect
 % correct for round earth
