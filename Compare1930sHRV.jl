@@ -45,7 +45,7 @@ using LombScargle
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med14_steps3_97/")
 c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_micrometricTAL/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_new/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_2hr30prct_TEST/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -53,13 +53,14 @@ c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standar
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_10prct_6hr_NEW.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW.jld")
-c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_SACPZ.jld")
+#c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_SACPZ.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
-c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
+#c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld")
 c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_30prct_2hr_STANDARD.jld")
 #c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_50prct_12hr_MICROMETRICMOD.jld")
 c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1935_1940_spectsave_30prct_2hr_STANDARD.jld")
 readin_new = "standard" # regular way from MicroseismActivityIndex.jl
+enddate = 2023 # set to way into future to ignore this should be in floating point year format
 #readin_new = "rickmicrometric" # convert to velocity and divide into bands
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
@@ -75,8 +76,12 @@ onedaymedian = true # resample to once-daily medians
 DaysInYear = 365.2422 # tropical year in days
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
+# year step (if using this option, one-day median, rolling median, jday filter, and goodmonths don't work)
+yearwindstep = Dates.Year(1) # window size (this should be roughly equivalent to how many years of analog data there are)
+        # set to 0 to use the old way
 # rolling median
-rollmedwind = Dates.Day(0) # set to zero for non
+rollmedwind = Dates.Day(0) # set to zero for none
+rollmedstep = Dates.Day(0)
 #rollmedwind = Dates.Day(0)
 # harmonics (seasonal)
 harmonicsmedwind = Dates.Day(60) # just for harmonics
@@ -98,6 +103,7 @@ maxNaNratio = 0.6 # maximum ratio of NaN to data in rolling median
 # bands for primary and secondary
 bands = [ # seconds (one pair is a row with a lower and upper value)
     4 12; #secondary
+    5 9; # secondary trimmed
     14 20; # primary
     4 20; # all microseism
     ] 
@@ -109,26 +115,26 @@ bands = [ # seconds (one pair is a row with a lower and upper value)
 #     5 10; # reliable looking part of response
 #     1 10; # peterson secondary peak
 #     ] 
-bands = [ # 3 second
-    1 3; # stepped bands
-    2 4;
-    3 5;
-    4 6;
-    5 7;
-    6 8;
-    7 9;
-    8 10;
-    9 11;
-    10 12;
-    11 13;
-    12 14;
-    13 15;
-    14 16;
-    15 17;
-    16 18;
-    17 19;
-    18 20;
-    ] 
+# bands = [ # 3 second
+#     1 3; # stepped bands
+#     2 4;
+#     3 5;
+#     4 6;
+#     5 7;
+#     6 8;
+#     7 9;
+#     8 10;
+#     9 11;
+#     10 12;
+#     11 13;
+#     12 14;
+#     13 15;
+#     14 16;
+#     15 17;
+#     16 18;
+#     17 19;
+#     18 20;
+#     ] 
 # bands = [ # 3 second evens (odd band centers) for micrometrics
 #     4 6;
 #     6 8;
@@ -172,7 +178,7 @@ bands = [ # 3 second
 #     12 19;
 #     13 20;
 #     ] 
-bands = [1.5:29.5 2.5:30.5] # micrometrics TAL 1 second bands centered on from 2-30 
+# bands = [1.5:19.5 2.5:20.5] # micrometrics TAL 1 second bands centered on from 2-30 
 
 ## CHECK DIRS
 if !isdir(c_dataout)
@@ -463,191 +469,242 @@ for i = 1:Nbands
     oldDfilt[oldidx] = oldD[oldidx]
     newDfilt[newidx] = newD[newidx]
 
-    ## RESAMPLE TO ONE-DAY
-    if onedaymedian
-        # preserve originals
+    ## AGGREGATE INTO YEAR WINDOWS OR DO OLD PROCESSING (harmonics, filters, etc...)
+    if yearwindstep!=Dates.Year(0)
+        # save the originals
         oldDfilt0 = deepcopy(oldDfilt)
         newDfilt0 = deepcopy(newDfilt)
         oldTyear0 = deepcopy(oldTyear)
         newTyear0 = deepcopy(newTyear)
-        # setup new times
-        oldTyear = minimum(oldTyear0):(1/DaysInYear):maximum(oldTyear0)
-        newTyear = minimum(newTyear0):(1/DaysInYear):maximum(newTyear0)
-        # loop over and calculate for new
-        newDfilt = fill!(rand(length(newTyear)-1),NaN)
-        for j = 1:lastindex(newTyear)-1
-            gidx = findall(newTyear[j] .<= newTyear0 .<= newTyear[j+1])
-            if sum(.!isnan.(newDfilt0[gidx]))>0 # if not all NaN
-                newDfilt[j] = median(filter(!isnan,newDfilt0[gidx]))
-            end
-        end
-        # and same for old
-        oldDfilt = fill!(rand(length(oldTyear)-1),NaN)
-        for j = 1:lastindex(oldTyear)-1
-            gidx = findall(oldTyear[j] .<= oldTyear0 .<= oldTyear[j+1])
+        # compute the oldTyear and oldDfilt for the old data
+        oldTyear = minimum(oldTyear0):Dates.value(yearwindstep):maximum(oldTyear0)
+        oldDfilt = fill!(rand(length(oldTyear)),NaN)
+        for j = 1:lastindex(oldTyear) # get the data
+            gidx = findall(oldTyear[j] .<= oldTyear0 .<= oldTyear[j]+Dates.value(yearwindstep))
             if sum(.!isnan.(oldDfilt0[gidx]))>0 # if not all NaN
                 oldDfilt[j] = median(filter(!isnan,oldDfilt0[gidx]))
             end
         end
-        # use center of each window for time
-        newTyear = newTyear[1:end-1].+(0.5/DaysInYear)
-        oldTyear = oldTyear[1:end-1].+(0.5/DaysInYear)
-    end
+        oldTyear = oldTyear .+ 0.5*Dates.value(yearwindstep) # convert from window start to window center
+        # compute the data coverage weighting function
+        bins = range(0,1,12) # bin the year fractions
+        counts = zeros(length(bins)-1)
+        remoldTyear = rem.(oldTyear0,1) # get year fraction (remainder)
+        for j = 2:lastindex(bins)
+            gidx = findall(bins[j-1] .<= remoldTyear .<= bins[j])
+            counts[j-1] = sum(.!isnan.(oldDfilt0[gidx]))
+        end
+        normcounts = counts ./ maximum(counts)
+        binctrs = bins[1:end-1] .+ 0.5*mode(diff(bins)) # get bin centers
+        binctrs = [-binctrs[1]; binctrs; binctrs[1]+1] # wraparound
+        normcounts = [counts[end]; counts; counts[1]]
+        hpcts = plot(binctrs,normcounts,xlabel="Year Fraction",ylabel = "Normalized Weight",
+            legend = false, title="Data Density Weighting",lc=:black)
+        savefig(hpcts,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Weighting.pdf"))
+        wghtsitp = LinearInterpolation(binctrs,normcounts) # get interpolant
+        # compute the newTyear and newDfilt with weighting
+        newTyear = minimum(newTyear0):Dates.value(yearwindstep):maximum(newTyear0)
+        newDfilt = fill!(rand(length(newTyear)),NaN)
+        for j = 1:lastindex(newTyear) # get the data
+            gidx = findall(newTyear[j] .<= newTyear0 .<= newTyear[j]+Dates.value(yearwindstep))
+            if sum(.!isnan.(newDfilt0[gidx]))>0 # if not all NaN
+                gidx2 = findall(.!isnan.(newDfilt0[gidx]))
+                ytimestmp = rem.(newTyear0[gidx[gidx2]],1) # year fraction of good times
+                wghtstmp = wghtsitp(ytimestmp)
+                newDfilt[j] = lf.wghtdprctle(newDfilt0[gidx[gidx2]],wghtstmp,50,true)
+            end
+        end
+        newTyear = newTyear .+ 0.5*Dates.value(yearwindstep) # convert from window start to window center
+    else
+        ## RESAMPLE TO ONE-DAY
+        if onedaymedian
+            # preserve originals
+            oldDfilt0 = deepcopy(oldDfilt)
+            newDfilt0 = deepcopy(newDfilt)
+            oldTyear0 = deepcopy(oldTyear)
+            newTyear0 = deepcopy(newTyear)
+            # setup new times
+            oldTyear = minimum(oldTyear0):(1/DaysInYear):maximum(oldTyear0)
+            newTyear = minimum(newTyear0):(1/DaysInYear):maximum(newTyear0)
+            # loop over and calculate for new
+            newDfilt = fill!(rand(length(newTyear)-1),NaN)
+            for j = 1:lastindex(newTyear)-1
+                gidx = findall(newTyear[j] .<= newTyear0 .<= newTyear[j+1])
+                if sum(.!isnan.(newDfilt0[gidx]))>0 # if not all NaN
+                    newDfilt[j] = median(filter(!isnan,newDfilt0[gidx]))
+                end
+            end
+            # and same for old
+            oldDfilt = fill!(rand(length(oldTyear)-1),NaN)
+            for j = 1:lastindex(oldTyear)-1
+                gidx = findall(oldTyear[j] .<= oldTyear0 .<= oldTyear[j+1])
+                if sum(.!isnan.(oldDfilt0[gidx]))>0 # if not all NaN
+                    oldDfilt[j] = median(filter(!isnan,oldDfilt0[gidx]))
+                end
+            end
+            # use center of each window for time
+            newTyear = newTyear[1:end-1].+(0.5/DaysInYear)
+            oldTyear = oldTyear[1:end-1].+(0.5/DaysInYear)
+        end
 
-    ## GET THE ROLLING MEDIAN
-    if rollmedwind>Dates.Day(0)
-        medwindyear = Dates.value(Dates.Day(rollmedwind))/DaysInYear
-        oldDfilt0 = deepcopy(oldDfilt)
-        Nmedwind = convert(Int,round(medwindyear/mode(diff(oldTyear))))
-        global oldDfilt = lf.movingmedian(oldDfilt,Nmedwind,maxNaNratio)
-        newDfilt0 = deepcopy(newDfilt)
-        Nmedwind = convert(Int,round(medwindyear/mode(diff(newTyear))))
-        global newDfilt = lf.movingmedian(newDfilt,Nmedwind,maxNaNratio)
-    end
+        ## GET THE ROLLING MEDIAN
+        if rollmedwind>Dates.Day(0)
+            medwindyear = Dates.value(Dates.Day(rollmedwind))/DaysInYear
+            medstepyear = Dates.value(Dates.Day(rollmedstep))/DaysInYear
+            oldDfilt0 = deepcopy(oldDfilt)
+            Nmedwind = convert(Int,round(medwindyear/mode(diff(oldTyear))))
+            Nmedstep = convert(Int,round(medstepyear/mode(diff(oldTyear))))
+            global oldDfilt = lf.movingmedian(oldDfilt,Nmedwind,Nmedstep,maxNaNratio)
+            newDfilt0 = deepcopy(newDfilt)
+            Nmedwind = convert(Int,round(medwindyear/mode(diff(newTyear))))
+            Nmedstep = convert(Int,round(medstepyear/mode(diff(newTyear))))
+            global newDfilt = lf.movingmedian(newDfilt,Nmedwind,Nmedstep,maxNaNratio)
+        end
 
-    ## REMOVE HARMONICS BASED ON MODERN
-    if removeharmonics
-        # get time in years
-        tmpD = deepcopy(newDfilt)
-        if harmonicsmedwind>Dates.Day(0)
-            windyear = Dates.value(Dates.Day(harmonicsmedwind))/DaysInYear
-            Nmedwind = convert(Int,round(windyear/mode(diff(newTyear))))
-            tmpD = lf.movingmedian(tmpD,Nmedwind,0.5) # no more than 1/2 NaN in a window
-        end 
-        global harmonicD = zeros(length(tmpD))
-        #     # replace NaN with mean mean values
-        #     tmpD[findall(isnan.(tmpD))].=mean(filter(!isnan,tmpD))
-        #     # find next even number and add a zero if need be
-        #     if isodd(length(tmpD))
-        #         tmpD = [tmpD; mean(tmpD)]
-        #         tyear = [tyear; tyear[end]+mode(diff(tyear))]
-        #     end
-        #     # get fft
-        #     fftD = fft(tmpD)[1:convert(Int,(length(tmpD)/2))]
-        #     # get frequencies in cycles/year
-        #     fftf = fftfreq(length(tmpD),1/mode(diff(tyear)))[1:convert(Int,(length(tmpD)/2))]
-        #     # get coefficients
-        #     ak =  2/length(tmpD) * real.(fftD)
-        #     bk = -2/length(tmpD) * imag.(fftD)  # fft sign convention
-        #     ak[1] = ak[1]/2
-        #     # get harmonics
-        #     harmonicf = 1:1:Ncoefficients
-        #     fidx = map(x->argmin(abs.(fftf.-harmonicf[x])),1:lastindex(harmonicf)) # get harmonic frequency positions
-        #     ltime = tyear[end]-tyear[1]
-        #     for j = 1:lastindex(fidx)
-        #         harmonicD .+= ak[fidx[j]] * cos.(2π*(fidx[j]-1)/ltime * tyear)
-        #             .+ bk[fidx[j]] * sin.(2π*(fidx[j]-1)/ltime * tyear)
-        #     end
-        # use direct method for accuracy
-        gidx = findall(.!isnan.(tmpD))
-        fidx = []; ak = []; bk = [];
-        for j = 1:Ncoefficients
-            append!(fidx,j) # in cycles per year
-            # set basis functions
-            sbase = sin.(2π * j * newTyear)
-            cbase = cos.(2π * j * newTyear)
-            # get coefficients
-            append!(ak, sum(sbase[gidx].*tmpD[gidx])/(length(gidx)/2))
-            append!(bk, sum(cbase[gidx].*tmpD[gidx])/(length(gidx)/2))
-            # reconstruct
-            harmonicD .+= ak[end] * sbase .+ bk[end] * cbase
+        ## REMOVE HARMONICS BASED ON MODERN
+        if removeharmonics
+            # get time in years
+            tmpD = deepcopy(newDfilt)
+            if harmonicsmedwind>Dates.Day(0)
+                windyear = Dates.value(Dates.Day(harmonicsmedwind))/DaysInYear
+                Nmedwind = convert(Int,round(windyear/mode(diff(newTyear))))
+                tmpD = lf.movingmedian(tmpD,Nmedwind,0.5) # no more than 1/2 NaN in a window
+            end 
+            global harmonicD = zeros(length(tmpD))
+            #     # replace NaN with mean mean values
+            #     tmpD[findall(isnan.(tmpD))].=mean(filter(!isnan,tmpD))
+            #     # find next even number and add a zero if need be
+            #     if isodd(length(tmpD))
+            #         tmpD = [tmpD; mean(tmpD)]
+            #         tyear = [tyear; tyear[end]+mode(diff(tyear))]
+            #     end
+            #     # get fft
+            #     fftD = fft(tmpD)[1:convert(Int,(length(tmpD)/2))]
+            #     # get frequencies in cycles/year
+            #     fftf = fftfreq(length(tmpD),1/mode(diff(tyear)))[1:convert(Int,(length(tmpD)/2))]
+            #     # get coefficients
+            #     ak =  2/length(tmpD) * real.(fftD)
+            #     bk = -2/length(tmpD) * imag.(fftD)  # fft sign convention
+            #     ak[1] = ak[1]/2
+            #     # get harmonics
+            #     harmonicf = 1:1:Ncoefficients
+            #     fidx = map(x->argmin(abs.(fftf.-harmonicf[x])),1:lastindex(harmonicf)) # get harmonic frequency positions
+            #     ltime = tyear[end]-tyear[1]
+            #     for j = 1:lastindex(fidx)
+            #         harmonicD .+= ak[fidx[j]] * cos.(2π*(fidx[j]-1)/ltime * tyear)
+            #             .+ bk[fidx[j]] * sin.(2π*(fidx[j]-1)/ltime * tyear)
+            #     end
+            # use direct method for accuracy
+            gidx = findall(.!isnan.(tmpD))
+            fidx = []; ak = []; bk = [];
+            for j = 1:Ncoefficients
+                append!(fidx,j) # in cycles per year
+                # set basis functions
+                sbase = sin.(2π * j * newTyear)
+                cbase = cos.(2π * j * newTyear)
+                # get coefficients
+                append!(ak, sum(sbase[gidx].*tmpD[gidx])/(length(gidx)/2))
+                append!(bk, sum(cbase[gidx].*tmpD[gidx])/(length(gidx)/2))
+                # reconstruct
+                harmonicD .+= ak[end] * sbase .+ bk[end] * cbase
+            end
+            # estimate spectra to check
+            lsp = lombscargle(newTyear[gidx],tmpD[gidx])
+            (fftf, fftD) = freqpower(lsp)
+            # trim down to less than 10 cycles
+            gidx = findfirst(fftf.>=10)
+            fftf=fftf[1:gidx]; fftD=fftD[1:gidx]
+            # plot
+            hpf1 = plot(fftf[2:end],real.(fftD[2:end]).^2,xlim=(0,5),label="",
+                xlabel="cycles/year",ylabel="PSD",title="Harmonics")
+            hpf2 = scatter(newTyear,newDfilt,ms=1,mc=:black,
+                title="Harmonics Fit",label="",ylabel=unitstring,
+                ylim=(0,percentile(filter(!isnan,newDfilt),98)))
+            plot!(hpf2,newTyear,harmonicD.+median(filter(!isnan,newDfilt)),
+                lw=2,label=string(Ncoefficients,"-harmonic fit"))
+            hpf3 = scatter(newTyear,newDfilt.-harmonicD,
+                ms=1,mc=:black,title="Harmonics Removed",label="",ylabel=unitstring,
+                ylim=(0,percentile(filter(!isnan,newDfilt),98)))
+            hpf = plot(hpf1,hpf2,hpf3,layout=grid(3,1),size=(1000,1000))
+            savefig(hpf,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Harmonics.pdf"))
+            # plot old stuff
+            harmonicDold = zeros(length(oldDfilt))
+            for j = 1:lastindex(fidx)
+                # set basis functions
+                sbase = sin.(2π * fidx[j] * oldTyear)
+                cbase = cos.(2π * fidx[j] * oldTyear)
+                # reconstruct
+                harmonicDold .+= ak[j] * sbase .+ bk[j] * cbase
+            end
+            hpg1 = scatter(oldTyear,oldDfilt,ms=1,mc=:black,
+                title="Harmonics Fit",label="",ylabel=unitstring,
+                ylim=(0,percentile(filter(!isnan,oldDfilt),98)))
+            plot!(hpg1,oldTyear,harmonicDold.+median(filter(!isnan,newDfilt)),
+                lw=2,label=string(Ncoefficients,"-harmonic fit"))
+            hpg2 = scatter(oldTyear,oldDfilt.-harmonicDold,
+                ms=1,mc=:black,title="Harmonics Removed",label="",ylabel=unitstring,
+                ylim=(0,percentile(filter(!isnan,oldDfilt),98)))
+            hpg = plot(hpg1,hpg2,layout=grid(2,1),size=(1000,600))
+            savefig(hpg,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_OldHarmonics.pdf"))
+            # save original and subtract
+            global newDfilt0 = deepcopy(newDfilt)
+            global oldDfilt0 = deepcopy(oldDfilt)
+            newDfilt = newDfilt .- harmonicD
+            oldDfilt = oldDfilt .- harmonicDold
         end
-        # estimate spectra to check
-        lsp = lombscargle(newTyear[gidx],tmpD[gidx])
-        (fftf, fftD) = freqpower(lsp)
-        # trim down to less than 10 cycles
-        gidx = findfirst(fftf.>=10)
-        fftf=fftf[1:gidx]; fftD=fftD[1:gidx]
-        # plot
-        hpf1 = plot(fftf[2:end],real.(fftD[2:end]).^2,xlim=(0,5),label="",
-            xlabel="cycles/year",ylabel="PSD",title="Harmonics")
-        hpf2 = scatter(newTyear,newDfilt,ms=1,mc=:black,
-            title="Harmonics Fit",label="",ylabel=unitstring,
-            ylim=(0,percentile(filter(!isnan,newDfilt),98)))
-        plot!(hpf2,newTyear,harmonicD.+median(filter(!isnan,newDfilt)),
-            lw=2,label=string(Ncoefficients,"-harmonic fit"))
-        hpf3 = scatter(newTyear,newDfilt.-harmonicD,
-            ms=1,mc=:black,title="Harmonics Removed",label="",ylabel=unitstring,
-            ylim=(0,percentile(filter(!isnan,newDfilt),98)))
-        hpf = plot(hpf1,hpf2,hpf3,layout=grid(3,1),size=(1000,1000))
-        savefig(hpf,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Harmonics.pdf"))
-        # plot old stuff
-        harmonicDold = zeros(length(oldDfilt))
-        for j = 1:lastindex(fidx)
-            # set basis functions
-            sbase = sin.(2π * fidx[j] * oldTyear)
-            cbase = cos.(2π * fidx[j] * oldTyear)
-            # reconstruct
-            harmonicDold .+= ak[j] * sbase .+ bk[j] * cbase
-        end
-        hpg1 = scatter(oldTyear,oldDfilt,ms=1,mc=:black,
-            title="Harmonics Fit",label="",ylabel=unitstring,
-            ylim=(0,percentile(filter(!isnan,oldDfilt),98)))
-        plot!(hpg1,oldTyear,harmonicDold.+median(filter(!isnan,newDfilt)),
-            lw=2,label=string(Ncoefficients,"-harmonic fit"))
-        hpg2 = scatter(oldTyear,oldDfilt.-harmonicDold,
-            ms=1,mc=:black,title="Harmonics Removed",label="",ylabel=unitstring,
-            ylim=(0,percentile(filter(!isnan,oldDfilt),98)))
-        hpg = plot(hpg1,hpg2,layout=grid(2,1),size=(1000,600))
-        savefig(hpg,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_OldHarmonics.pdf"))
-        # save original and subtract
-        global newDfilt0 = deepcopy(newDfilt)
-        global oldDfilt0 = deepcopy(oldDfilt)
-        newDfilt = newDfilt .- harmonicD
-        oldDfilt = oldDfilt .- harmonicDold
-    end
 
-    ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
-    if usejdayfilter
-        oldjdays = convert.(Int,round.(rem.(oldTyear,1).*DaysInYear))
-        oldyrs = floor.(oldTyear)
-        windowstrt = 1:filterstep:366-filtersize
-        oldyrsu = convert.(Int,unique(oldyrs))
-        windowidx = []
-        for j = 1:lastindex(oldyrsu)
-            # find data points in a given year
-            yidx = findall(oldyrs.==oldyrsu[j])
-            # get the points with data
-            nonanidx = .!isnan.(oldDfilt[yidx])
-            # get the amount of data for each jday
-            tmpdatacov = map(x->mean(nonanidx[findall(
-                    windowstrt[x] .<= oldjdays[yidx] .<= windowstrt[x]+filtersize 
-                )]),
-                1:lastindex(windowstrt))
-            # find data above threshold
-            tmpdataidx = findall(tmpdatacov .>= filtercomp)
-            # add this years data
-            push!(windowidx,tmpdataidx)
+        ## CALCULATE AND APPLY JULIAN DAY FILTER IF NECESSARY
+        if usejdayfilter
+            oldjdays = convert.(Int,round.(rem.(oldTyear,1).*DaysInYear))
+            oldyrs = floor.(oldTyear)
+            windowstrt = 1:filterstep:366-filtersize
+            oldyrsu = convert.(Int,unique(oldyrs))
+            windowidx = []
+            for j = 1:lastindex(oldyrsu)
+                # find data points in a given year
+                yidx = findall(oldyrs.==oldyrsu[j])
+                # get the points with data
+                nonanidx = .!isnan.(oldDfilt[yidx])
+                # get the amount of data for each jday
+                tmpdatacov = map(x->mean(nonanidx[findall(
+                        windowstrt[x] .<= oldjdays[yidx] .<= windowstrt[x]+filtersize 
+                    )]),
+                    1:lastindex(windowstrt))
+                # find data above threshold
+                tmpdataidx = findall(tmpdatacov .>= filtercomp)
+                # add this years data
+                push!(windowidx,tmpdataidx)
+            end
+            # get the intersect
+            windowidxint = windowidx[1]
+            for j = 1:lastindex(windowidx)
+                windowidxint = intersect(windowidxint,windowidx[j])
+            end
+            # convert window indices to jdays
+            filtjdays = []
+            for j = 1:lastindex(windowidxint)
+                append!(filtjdays,windowstrt[windowidxint[j]]:windowstrt[windowidxint[j]]+filtersize)
+            end
+            filtjdays = convert.(Int,unique(filtjdays))
+            # filter old data
+            oldbidx = findall(sum(map(x->filtjdays[x].==oldjdays,1:lastindex(filtjdays))).==0)
+            oldDfilt[oldbidx] .= NaN
+            # filter new data
+            newjdays = convert.(Int,round.(rem.(newTyear,1).*DaysInYear))
+            newbidx = findall(sum(map(x->filtjdays[x].==newjdays,1:lastindex(filtjdays))).==0)
+            newDfilt[newbidx] .= NaN
         end
-        # get the intersect
-        windowidxint = windowidx[1]
-        for j = 1:lastindex(windowidx)
-            windowidxint = intersect(windowidxint,windowidx[j])
-        end
-        # convert window indices to jdays
-        filtjdays = []
-        for j = 1:lastindex(windowidxint)
-            append!(filtjdays,windowstrt[windowidxint[j]]:windowstrt[windowidxint[j]]+filtersize)
-        end
-        filtjdays = convert.(Int,unique(filtjdays))
-        # filter old data
-        oldbidx = findall(sum(map(x->filtjdays[x].==oldjdays,1:lastindex(filtjdays))).==0)
-        oldDfilt[oldbidx] .= NaN
-        # filter new data
-        newjdays = convert.(Int,round.(rem.(newTyear,1).*DaysInYear))
-        newbidx = findall(sum(map(x->filtjdays[x].==newjdays,1:lastindex(filtjdays))).==0)
-        newDfilt[newbidx] .= NaN
-    end
 
-    ## CLEAN UP THE DATA BASED ON MONTH
-    # get only the valid months if requested
-    if !isempty(goodmonths)
-        oldjdays = convert.(Int,round.(rem.(oldTyear,1).*DaysInYear))
-        oldbmidx = findall(.!(goodmonths[1].<=oldjdays.<=goodmonths[2]))
-        oldDfilt[oldbmidx] .= NaN
-        newjdays = convert.(Int,round.(rem.(newTyear,1).*DaysInYear))
-        oldbmidx = findall(.!(goodmonths[1].<=newjdays.<=goodmonths[2]))
-        newDfilt[newbmidx] .= NaN
+        ## CLEAN UP THE DATA BASED ON MONTH
+        # get only the valid months if requested
+        if !isempty(goodmonths)
+            oldjdays = convert.(Int,round.(rem.(oldTyear,1).*DaysInYear))
+            oldbmidx = findall(.!(goodmonths[1].<=oldjdays.<=goodmonths[2]))
+            oldDfilt[oldbmidx] .= NaN
+            newjdays = convert.(Int,round.(rem.(newTyear,1).*DaysInYear))
+            oldbmidx = findall(.!(goodmonths[1].<=newjdays.<=goodmonths[2]))
+            newDfilt[newbmidx] .= NaN
+        end
     end
     
     ## IMPLEMENT THE ROBUST FIT AND ROBUST LEAST SQUARES PACKAGES
@@ -683,6 +740,12 @@ for i = 1:Nbands
         stda = sqrt(covB[2,2])
         stdb = sqrt(covB[1,1])
         return coefs[2], coefs[1], stda, stdb
+    end
+
+    if newTyear[end]>enddate
+        gidx = findall(newTyear.<=enddate)
+        newTyear = newTyear[gidx]
+        newDfilt = newDfilt[gidx]
     end
 
     ## GET OUT THE TRENDS
@@ -754,10 +817,11 @@ for i = 1:Nbands
         lc=:black,lw=1.5,ylabel=unitstring,legend=:outerbottom,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
+    scatter!(hpc,[oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],mc=:black,label="")
     # plot old trend
     xtmp = range(oldTyear[1],newTyear[end],100)
-    plot!(hpc,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(oldbstd*1.96,sigdigits=2),
-        " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep*1.96,sigdigits=2)," % rel. med.)"))
+    # plot!(hpc,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(oldbstd*1.96,sigdigits=2),
+    #     " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep*1.96,sigdigits=2)," % rel. med.)"))
     # plot new trend
     plot!(hpc,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newbstd*1.96,sigdigits=2),
         " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep*1.96,sigdigits=2)," % rel. med.)"))
@@ -775,11 +839,12 @@ for i = 1:Nbands
     #     scatter!(hpd1,oldTyear,oldDfilt0,
     #     mc=:gray,ma=0.5,ms=1,label="")
     # end
-    plot!(hpd1,oldTyear,oldDfilt,lw=2,
+    plot!(hpd1,oldTyear,oldDfilt,lw=2,lc=:black,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
+    scatter!(hpd1,oldTyear,oldDfilt,mc=:black,label="")
     xtmp = range(oldTyear[1],oldTyear[end],100)
-    plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(oldbstd*1.96,sigdigits=2),
-        " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep*1.96,sigdigits=2)," % rel. med.)"))
+    # plot!(hpd1,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(oldbstd*1.96,sigdigits=2),
+    #     " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep*1.96,sigdigits=2)," % rel. med.)"))
     ## PLOT NEW DATA BY ITSELF
     hpd2 = plot([],[],
         ylabel=unitstring,legend=:outerbottom,label="",
@@ -788,8 +853,9 @@ for i = 1:Nbands
     #     scatter!(hpd2,newTyear,newDfilt0,
     #     mc=:gray,ma=0.5,ms=1,label="")
     # end
-    plot!(hpd2,newTyear,newDfilt,lw=2,
+    plot!(hpd2,newTyear,newDfilt,lw=2,lc=:black,
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),)
+    scatter!(hpd2,newTyear,newDfilt,mc=:black,label="")
     xtmp = range(newTyear[1],newTyear[end],100)
     plot!(hpd2,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newbstd*1.96,sigdigits=2),
         " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep*1.96,sigdigits=2)," % rel. med.)"))
