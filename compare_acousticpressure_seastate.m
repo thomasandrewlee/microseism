@@ -267,6 +267,23 @@ for j = 1:Nbands
     ha.YLabel.String = 'MERMAID';
 end
 savefig([c_output,'ww3_heatmap'],hf1.Number,'pdf')
+close(hf1);
+hf2 = figure; % for trajectory plot
+hf2.Position = [hf2.Position(1:3),hf2.Position(4)*Nbands];
+% convert times to doy
+ph = phasemap(365); % wraparound color map
+doy = day(times,'DayofYear');
+for j = 1:Nbands
+    ha = subplot(Nbands,1,j);
+    scatter(ww3pow(j,:),bandpow(j,:),2,doy,"filled");
+    ha.Title.String = num2str(bands(j,:));
+    ha.XLabel.String = 'WW3';
+    ha.YLabel.String = 'MERMAID';
+    cb = colorbar(ha); cb.Label.String = 'Day of Year';
+    colormap(ph);
+end
+exportgraphics(hf2,[c_output,'ww3_mermaid_trajectory.pdf'],'ContentType','vector','BackgroundColor','none');
+close(hf2);
 
 %% compute fourier trends for the time series (MERMAID) and WW3
 daytime = datenum(times-min(times)); % convert to days since 01/00/0000
@@ -350,8 +367,6 @@ if useww3
     merclim.p95 = nan(length(freq),length(climctrs));
     merclim.mean = nan(length(freq),length(climctrs)); 
     merclim.std = nan(length(freq),length(climctrs));
-    % convert times to doy
-    doy = day(times,'DayofYear');
     for i = 1:length(climctrs)
         % get endpoints
         doy0 = climctrs(i) - climwind/2; % start day
