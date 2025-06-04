@@ -25,12 +25,12 @@ close all
 %% setup
 % data sources
 useww3 = true; % also compare ww3 data
-% c_MERDAT_COP = '/Users/tl7869/Desktop/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
-% c_MAT_WW3 = '/Users/tl7869/Desktop/WW3_OUT_NEW/';
-% c_output = '/Users/tl7869/Desktop/acoustic_v_surface/';
-c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
-c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
-c_output = '/Users/thomaslee/Downloads/acoustic_v_surface/';
+c_MERDAT_COP = '/Users/tl7869/Desktop/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
+c_MAT_WW3 = '/Users/tl7869/Desktop/WW3_OUT_MED_P2L/';
+c_output = '/Users/tl7869/Desktop/acoustic_v_surface_w_bathy/';
+% c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
+% c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
+% c_output = '/Users/thomaslee/Downloads/acoustic_v_surface/';
 % psd to use
 use50 = true; % otherwise use 95
 % bands (in seconds)
@@ -75,7 +75,20 @@ if useww3
         if sum(size(ww3d,1:3)==size(D,1:3))==3
             % merge
             ww3d = cat(4,ww3d,D);
-            ww3t = [ww3t t];
+            try
+               ww3t = [ww3t; t];
+            catch ME
+               if (strcmp(ME.identifier,'MATLAB:catenate:dimensionMismatch'))
+                    disp(['Dimension mismatch occurred: First argument has dims [', ...
+                        num2str(size(A)),'] while second has dims [', ...
+                        num2str(size(B)),']']);
+                    disp('Trying [ww3t t] instead of [ww3t; t]...');
+                    ww3t = [ww3t t];
+                    disp('Success!');
+               end
+               rethrow(ME)
+            end 
+            ww3t = [ww3t; t];
         else
             % interpolate
             D1 = interp3()
