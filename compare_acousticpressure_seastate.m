@@ -88,7 +88,6 @@ if useww3
                end
                rethrow(ME)
             end 
-            ww3t = [ww3t; t];
         else
             % interpolate
             D1 = interp3()
