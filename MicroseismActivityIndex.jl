@@ -45,32 +45,34 @@ using RobustLeastSquares
 ## SETTINGS
 cRunName = "HRV_1022_TEMP_SMOOTH48_TTLIM30_ITRA0O_3prct_12hr_area_param_sum6"
 cRunName = "HRV_8823_TEST_BAND_0.03_0.3_MinWind_33_Vw2Vp_0.1_1.0_baroNONE_noWindSum_new2b_noHough_FINDFIT"
-cRunName = "TEST_50prct_12hr_STANDARD"
+cRunName = "TEST_FOR_SRL_1930s3_Short"
 clearResults = false
 # data locations
-cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_2021-23.txt") # HURDAT file
-#cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
+#cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_2021-23.txt") # HURDAT file
+cHURDAT = string(user_str,"Research/Storm_Noise/HURDAT_1988-23.txt") # HURDAT file
 #cHURDAT = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/HURDAT_Milton_even.txt")
-#spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
-spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
+spect_jld = string(user_str,"Downloads/HRV_JLD_RERUN/") # spectrogram JLDs
+#spect_jld = string(user_str,"Downloads/1936_40_HRV_SPECT/") # spectrogram JLDs
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_0.03_0.3.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_100prct_1hr_NEW.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_RICK.jld") # save file from initial readin
 #spect_save_File = string(user_str,"Research/MicroseismActivityIndex/MiltonAdamStuff/for_thomas/Power_data_IU_DWPF_00_LHZ.csv") # spect save for adamcsv readmode
 #spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_100prct_1hr_NEW_MICROMETRICMOD.jld")
-spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_30prct_2hr_MICROMETRICBHZ.jld")
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_30prct_2hr_STANDARD.jld")
+#spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_nocull_STANDARD.jld")
+spect_save_File = string(user_str,"Desktop/MAI/HRV_BHZ_2014_2020_spectsave_nocull_STANDARD.jld")
 spect_save_as_mat = false
-#seisreadmode = "standard"
+seisreadmode = "standard"
 #seisreadmode = "rickmicrometric" # input files for aster et al. processing
 #seisreadmode = "TALmicrometric" # modified rick micrometric with more bands
-seisreadmode = "TALmicrometricBHZ" # modified rick micrometric with lower periods (BHZ)
+#seisreadmode = "TALmicrometricBHZ" # modified rick micrometric with lower periods (BHZ)
 #seisreadmode = "adamcsv" # non-standard option to get adam's PSDs for Milton
 #micrometric_input_File = string(user_str,"Research/MicroseismActivityIndex/RickCode/Micrometrics_HRV_00.txt")
-micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV__")
-micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV___BHZ")
-station_gains_file = [] # use this empty to avoid correcting gains
+#micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV__")
+#micrometric_input_File = string(user_str,"Research/SpectraData/MicrometricsT_HRV___BHZ")
+#station_gains_file = [] # use this empty to avoid correcting gains
 # station_gains_file = string(user_str,"Research/HRV_BHZ_Gain.txt") # gains with time, station specific (THIS WILL BREAK FOR ANYTHING BUT HRV BHZ)
-#station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
+station_gains_file = string(user_str,"Research/SACPZ_HRV_19880101_today.txt")
 station_gains_SACPZ = true # if the gains are in a SAC PZ format
 use_baro = false
 METAR_jld_file = string(user_str,"Downloads/baro_METAR/BED_baro_19430205_20240625.jld")
@@ -97,8 +99,10 @@ StaLst = [] # grab everyting in the data directory if empty, otherwise use NTWK.
 #plot_f_range = [0.01,0.6]
 plot_f_range = [0.01,1.0] # range of frequencies to plot things over
 baro_f_range = [0.3,0.6] # range of frequencies to consider in making barometry comparison
-stime = Dates.DateTime(1988,1,1) # start time for spectra 
-etime = Dates.DateTime(2024,1,1) # end time for spectra 
+# stime = Dates.DateTime(1988,1,1) # start time for spectra 
+# etime = Dates.DateTime(2024,1,1) # end time for spectra
+stime = Dates.DateTime(2014,1,1) # start time for spectra 
+etime = Dates.DateTime(2020,1,1) # end time for spectra 
 # stime = Dates.DateTime(2021,1,1) # start time for spectra 
 # etime = Dates.DateTime(2024,1,1) # end time for spectra 
 # stime = Dates.DateTime(1935,1,1) # start time for spectra 
@@ -133,12 +137,14 @@ padwith = NaN # NaN recommended!!!
 # swind = Dates.Minute(720) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 0.5 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
-swind = Dates.Minute(120) # window in which to get representative spectra (set to 0 to skip culling)
+swind = Dates.Minute(0) # no culling
 sstep = Dates.Minute(15) # window step
-cull_ratio = 0.3 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+# swind = Dates.Minute(120) # window in which to get representative spectra (set to 0 to skip culling)
+# sstep = Dates.Minute(15) # window step
+# cull_ratio = 0.3 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
 # swind = Dates.Minute(360) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
-# cull_ratio = 0.1 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
+# cull_ratio = 0.1 # lowest power share toa average (0.2 = averaging lowest 1/5 of spectra)
 # swind = Dates.Minute(60) # window in which to get representative spectra (set to 0 to skip culling)
 # sstep = Dates.Minute(15) # window step
 # cull_ratio = 1.0 # lowest power share to average (0.2 = averaging lowest 1/5 of spectra)
@@ -1321,7 +1327,7 @@ if !go_to_results
                 # get median based on window
                 medwindyear = Dates.value(Dates.Day(seasonal_avg_window))/DaysInYear
                 Nmedwind = convert(Int,round(medwindyear/mode(diff(Tyear))))
-                Dfilt = lf.movingmedian(spectP0[k],Nmedwind,0.25)
+                Dfilt = lf.movingmedian(spectP0[k],Nmedwind,1,0.25)
             end
             gidx = findall(.!isnan.(Dfilt))
             # setup and get fourier

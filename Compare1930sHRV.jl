@@ -13,7 +13,9 @@ There exists a transfer function (in velocity) for LPZ to BHZ. We can use this a
 Created on: 10/07/2024
 Created by: Thomas Lee
 
-Last Modified:
+Last Modified: 5/14/2025
+- added read in to take in Emma Levin's expansion of the Vecchi and Knuston TC re-estimations
+  this can now be plotted alongside the comparison
 
 =#
 
@@ -64,12 +66,16 @@ enddate = 2023 # set to way into future to ignore this should be in floating poi
 #readin_new = "rickmicrometric" # convert to velocity and divide into bands
 # plotting
 decimation_factor = 2 # factor to decimate by for quick plots
+add_TCs = true
 # path to txfr fcn
 c_lpz2bhz_txfr = string(usr_str,"Desktop/EQDoub/M5.5_LPZ_BHZ_ampscl_stack10_microcorr/txfr.jld") 
 use_empirical = true # otherwise use the theoretical fit
 smoothing = 0.03 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
+# TC csv file
+c_TC_file = string(usr_str,"Research/TC_Counts/VecchiKnutson/ts_count_2days_adjusted_1_15.csv")
+plot_TC = true
 # outlier culling
 outliers = [0 95] # percentiles for culling
 onedaymedian = true # resample to once-daily medians
@@ -810,7 +816,7 @@ for i = 1:Nbands
         " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep*1.96,sigdigits=2)," % rel. med.)\n"))
     print(string("  Complete Trend is:   ",round(allb,sigdigits=2),"+/-",round(allbstd*1.96,sigdigits=2),
         " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep*1.96,sigdigits=2)," % rel. med.)\n"))
-    
+
     ## PLOT ALL THE DATA
     # plot data
     hpc = plot([oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],
@@ -862,6 +868,9 @@ for i = 1:Nbands
     ## COMBINE
     hpd = plot(hpd1,hpd2,layout=grid(1,2),size=(2000,800),left_margin=10mm,bottom_margin=10mm,)
     savefig(hpd,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Split.pdf"))
+    ## Write out limits
+    global yearmin = minimum([oldTyear; newTyear])
+    global yearmax = maximum([oldTyear; newTyear])
 end
 
 ## PRINT THE TREND AND POWER AGAINST BANDS
@@ -901,5 +910,29 @@ hpe6 = plot(bandctr,compmed,yerror=compmede*1.96,label="Complete",
 hpe = plot(hpe1,hpe2,hpe3,hpe4,hpe5,hpe6,
     layout=grid(3,2),size=(1000,1200),left_margin=10mm,bottom_margin=10mm,)
 savefig(hpe,string(c_dataout,"variance_with_bands_separate.pdf"))
+
+## GRAB TC DATA AND PLOT IF DESIRED
+if plot_TC
+    # read csv file of TC counts
+    ln = open(c_TC_file) do f
+        readlines(f)
+    end
+    TC_year = []
+    TC_count = []
+    for il = 2:lastindex(ln) # skip header line
+        #print(string(il,"\n"))
+        commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
+        # try read with subseconds
+        ytmp = tryparse(DateTime,ln[il][1:commas[1]-1],dateformat"y")
+        push!(TC_year,ytmp)
+        push!(TC_count,parse(Float64,ln[il][commas[1]+1:end]))
+    end 
+    print(string("Read ",length(TC_count)," events from ",c_TC_file,"...\n"))
+    hptc = plot(TC_year,TC_count,label="raw")
+    # plot rolling median
+    plot!(hptc,TC_year,lf.movingmean(TC_count,5),label="5-year median",
+        xlims=(Dates.DateTime(floor(yearmin)),Dates.DateTime(ceil(yearmax))))
+    savefig(hptc,string(c_dataout,"tc_counts.pdf"))
+end
 
 print("\nDone!\n")
