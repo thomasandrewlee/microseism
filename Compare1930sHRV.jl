@@ -74,7 +74,9 @@ smoothing = 0.03 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
 # TC csv file
-c_TC_file = string(usr_str,"Research/TC_Counts/VecchiKnutson/ts_count_2days_adjusted_1_15.csv")
+#c_TC_file = string(usr_str,"Research/TC_Counts/VecchiKnutson/ts_count_2days_adjusted_1_15.csv")
+c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/huDaysWA.hurdat2.1851-2024.csv")
+TC_data_type = "Western Atlantic Hurricane Days"
 plot_TC = true
 # outlier culling
 outliers = [0 95] # percentiles for culling
@@ -189,6 +191,29 @@ bands = [ # seconds (one pair is a row with a lower and upper value)
 ## CHECK DIRS
 if !isdir(c_dataout)
     mkdir(c_dataout)
+end
+
+## GRAB TC DATA AND PLOT IF DESIRED
+if plot_TC
+    # read csv file of TC counts
+    ln = open(c_TC_file) do f
+        readlines(f)
+    end
+    global TC_year = []
+    global TC_count = []
+    for il = 2:lastindex(ln) # skip header line
+        #print(string(il,"\n"))
+        commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
+        # try read with subseconds
+        ytmp = tryparse(DateTime,ln[il][1:commas[1]-1],dateformat"y")
+        push!(TC_year,ytmp)
+        push!(TC_count,parse(Float64,ln[il][commas[1]+1:end]))
+    end 
+    print(string("Read ",length(TC_count)," events from ",c_TC_file,"...\n"))
+    hptc = plot(TC_year,TC_count,label="raw")
+    # plot rolling median
+    plot!(hptc,TC_year,lf.movingmean(TC_count,5),label="5-year median",)
+    savefig(hptc,string(c_dataout,"tc_counts.pdf"))
 end
 
 ## READ JLD DATA
@@ -433,6 +458,10 @@ comptrende = []
 compmed = []
 compmede = []
 Nbands = size(bands)[1]
+if plot_TC
+    global seis2TCtrend = []
+    global seis2TCe = []
+end
 for i = 1:Nbands
     ## FILTER DOWN TO 1D POWER ACROSS BANDS
     # consider summing using trapezoidal sum
@@ -808,6 +837,39 @@ for i = 1:Nbands
     append!(compmed,median(filter(!isnan,[oldDfilt; newDfilt]))) # in units
     append!(compmede,std(filter(!isnan,[oldDfilt; newDfilt]))) 
 
+    ## MAKE LINEAR COMPARISON OF TC AGAINST MICROSEISM DATA
+    if plot_TC
+        # interpolate the microseism data to nearest point of TC data
+        seistmpyear = [oldTyear; newTyear]
+        seistmpD0 = [oldDfilt; newDfilt]
+        seistmpD = fill!(Vector{Float64}(undef,length(TC_count)),NaN)
+        Tgap = fill!(Vector{Float64}(undef,length(TC_count)),NaN)
+        for j = 1:lastindex(TC_year)
+            seisidx = argmin(abs.(Dates.value(Dates.year(TC_year[j])).-seistmpyear))
+            seistmpD[j] = seistmpD0[seisidx]
+            Tgap[j] = Dates.value(Dates.year(TC_year[j])) - seistmpyear[seisidx]
+        end
+        # filter
+        gidx = findall(Tgap.<=1) # gap of more than 1 year
+
+        # fit linear line
+        seisTCa, seisTCb, seisTCastd, seisTCbstd = rlmfit(
+            [reshape(seistmpD[gidx],length(gidx),1) ones(length(gidx))],
+            TC_counts[gidx],trendmode,IRLS)
+
+        # save coefficients and std
+        push!(seis2TCe, seisTCbstd) 
+        push!(seis2TCtrend, seisTCb)
+
+        # plot in power-count space
+        hptcm = scatter(seistmpD[gidx],TC_count[gidx],xlabel="m/s",ylabel=TC_data_type,label="")
+        # plot linear line
+        xtmp = [minimum(seistmpD[gidx]),maximum(seistmpD[gidx])]
+        plot!(hptcm,xtmp,xtmp.*seisTCb.+seisTCa,label="best linear fit")
+        savefig(hptcm,string(c_dataout,"seis2TC.pdf"))
+
+    end
+
     ## REPORT
     print(string("\n",bands[i,1],"-",bands[i,2],"s Band:\n"))
     print(string("  Historical Trend is: ",round(oldb,sigdigits=2),"+/-",round(oldbstd*1.96,sigdigits=2),
@@ -816,6 +878,10 @@ for i = 1:Nbands
         " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep*1.96,sigdigits=2)," % rel. med.)\n"))
     print(string("  Complete Trend is:   ",round(allb,sigdigits=2),"+/-",round(allbstd*1.96,sigdigits=2),
         " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep*1.96,sigdigits=2)," % rel. med.)\n"))
+    if plot_TC
+        print(string("  Seis2TC Trend is: ",round(seis2TCtrend[end],sigdigits=2),"+/-",round(seis2TCe[end]*1.96,sigdigits=2),
+            " ",TC_data_type,"/",unitstring,"\n"))
+    end
 
     ## PLOT ALL THE DATA
     # plot data
@@ -834,6 +900,12 @@ for i = 1:Nbands
     # plot both trend
     plot!(hpc,xtmp,alla.+allb.*xtmp,label=string("Comp. ",round(allb,sigdigits=2),"+/-",round(allbstd*1.96,sigdigits=2),
         " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep*1.96,sigdigits=2)," % rel. med.)"))
+    # add TC data
+    if plot_TC
+        plot!(hpc,TC_year,TC_count,label=TC_data_type)
+        plot!(hpc,TC_year,lf.movingmean(TC_count,5),label="5-year median",
+            xlims=(Dates.DateTime(minimum([oldTyear; newTyear])),Dates.DateTime(maximum([oldTyear; newTyear]))))
+    end
     # save
     savefig(hpc,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
 
@@ -868,9 +940,6 @@ for i = 1:Nbands
     ## COMBINE
     hpd = plot(hpd1,hpd2,layout=grid(1,2),size=(2000,800),left_margin=10mm,bottom_margin=10mm,)
     savefig(hpd,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band_Split.pdf"))
-    ## Write out limits
-    global yearmin = minimum([oldTyear; newTyear])
-    global yearmax = maximum([oldTyear; newTyear])
 end
 
 ## PRINT THE TREND AND POWER AGAINST BANDS
@@ -911,28 +980,5 @@ hpe = plot(hpe1,hpe2,hpe3,hpe4,hpe5,hpe6,
     layout=grid(3,2),size=(1000,1200),left_margin=10mm,bottom_margin=10mm,)
 savefig(hpe,string(c_dataout,"variance_with_bands_separate.pdf"))
 
-## GRAB TC DATA AND PLOT IF DESIRED
-if plot_TC
-    # read csv file of TC counts
-    ln = open(c_TC_file) do f
-        readlines(f)
-    end
-    TC_year = []
-    TC_count = []
-    for il = 2:lastindex(ln) # skip header line
-        #print(string(il,"\n"))
-        commas = findall(map(x->ln[il][x]==',',1:lastindex(ln[il])))
-        # try read with subseconds
-        ytmp = tryparse(DateTime,ln[il][1:commas[1]-1],dateformat"y")
-        push!(TC_year,ytmp)
-        push!(TC_count,parse(Float64,ln[il][commas[1]+1:end]))
-    end 
-    print(string("Read ",length(TC_count)," events from ",c_TC_file,"...\n"))
-    hptc = plot(TC_year,TC_count,label="raw")
-    # plot rolling median
-    plot!(hptc,TC_year,lf.movingmean(TC_count,5),label="5-year median",
-        xlims=(Dates.DateTime(floor(yearmin)),Dates.DateTime(ceil(yearmax))))
-    savefig(hptc,string(c_dataout,"tc_counts.pdf"))
-end
 
 print("\nDone!\n")
