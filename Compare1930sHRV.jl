@@ -845,17 +845,17 @@ for i = 1:Nbands
         seistmpD = fill!(Vector{Float64}(undef,length(TC_count)),NaN)
         Tgap = fill!(Vector{Float64}(undef,length(TC_count)),NaN)
         for j = 1:lastindex(TC_year)
-            seisidx = argmin(abs.(Dates.value(Dates.year(TC_year[j])).-seistmpyear))
+            seisidx = argmin(abs.(Dates.year(TC_year[j]).-seistmpyear))
             seistmpD[j] = seistmpD0[seisidx]
-            Tgap[j] = Dates.value(Dates.year(TC_year[j])) - seistmpyear[seisidx]
+            Tgap[j] = Dates.year(TC_year[j]) - seistmpyear[seisidx]
         end
         # filter
-        gidx = findall(Tgap.<=1) # gap of more than 1 year
+        gidx = findall(abs.(Tgap).<=1) # gap of more than 1 year
 
         # fit linear line
         seisTCa, seisTCb, seisTCastd, seisTCbstd = rlmfit(
             [reshape(seistmpD[gidx],length(gidx),1) ones(length(gidx))],
-            TC_counts[gidx],trendmode,IRLS)
+            TC_count[gidx],trendmode,IRLS)
 
         # save coefficients and std
         push!(seis2TCe, seisTCbstd) 
@@ -866,8 +866,7 @@ for i = 1:Nbands
         # plot linear line
         xtmp = [minimum(seistmpD[gidx]),maximum(seistmpD[gidx])]
         plot!(hptcm,xtmp,xtmp.*seisTCb.+seisTCa,label="best linear fit")
-        savefig(hptcm,string(c_dataout,"seis2TC.pdf"))
-
+        savefig(hptcm,string(c_dataout,bands[i,1],"_",bands[i,2],"_seis2TC.pdf"))
     end
 
     ## REPORT
@@ -886,7 +885,7 @@ for i = 1:Nbands
     ## PLOT ALL THE DATA
     # plot data
     hpc = plot([oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],
-        lc=:black,lw=1.5,ylabel=unitstring,legend=:outerbottom,
+        lc=:black,lw=1.5,ylabel=unitstring,legend=:outerbottom,#topright, # used to be :outerbottom
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     scatter!(hpc,[oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],mc=:black,label="")
@@ -902,9 +901,11 @@ for i = 1:Nbands
         " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep*1.96,sigdigits=2)," % rel. med.)"))
     # add TC data
     if plot_TC
-        plot!(hpc,TC_year,TC_count,label=TC_data_type)
-        plot!(hpc,TC_year,lf.movingmean(TC_count,5),label="5-year median",
-            xlims=(Dates.DateTime(minimum([oldTyear; newTyear])),Dates.DateTime(maximum([oldTyear; newTyear]))))
+        gidx = findall(minimum([oldTyear; newTyear]) .<= Dates.year(TC_year) .<= maximum([oldTyear; newTyear]))
+        hpc2 = twinx(hpc)
+        plot!(hpc2,Dates.year.(TC_year[gidx]),TC_count[gidx],label=TC_data_type,legend=false,ylabel=TC_data_type)
+        plot!(hpc2,Dates.year.(TC_year[gidx]),lf.movingmean(TC_count,5)[gidx],)#label="5-year median",
+            #xlims=(Dates.DateTime(floor(minimum([oldTyear; newTyear]))),Dates.DateTime(ceil(maximum([oldTyear; newTyear])))))
     end
     # save
     savefig(hpc,string(c_dataout,bands[i,1],"_",bands[i,2],"_Band.pdf"))
