@@ -17,6 +17,11 @@ Last Modified: 5/14/2025
 - added read in to take in Emma Levin's expansion of the Vecchi and Knuston TC re-estimations
   this can now be plotted alongside the comparison
 
+Last Modified: 6/18/2025
+- added more read in options for TC data, including days and counts, and now we actually
+  properly compute the fit between the TC and microseism data. plots are ugly, but that can
+  be fixed in post
+
 =#
 
 ## USER STRING
