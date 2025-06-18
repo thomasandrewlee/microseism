@@ -47,7 +47,7 @@ using LombScargle
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med14_steps3_97/")
 c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_micrometricTAL/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_2hr30prct_TEST/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_2hr30prct_TEST_TC_COUNTS/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -74,9 +74,11 @@ smoothing = 0.03 # smoothing window in Hz
 # data handling
 useroot = true # use square root instead of power
 # TC csv file
-#c_TC_file = string(usr_str,"Research/TC_Counts/VecchiKnutson/ts_count_2days_adjusted_1_15.csv")
-c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/huDaysWA.hurdat2.1851-2024.csv")
-TC_data_type = "Western Atlantic Hurricane Days"
+#c_TC_file = string(usr_str,"Research/TC_Counts/VecchiKnutson/ts_count_2days_adjusted_1_15.csv") # deprecated
+#c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/huDaysWA.hurdat2.1851-2024.csv")
+c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/nTSplus.hurdat2.1851-2024.csv")
+#TC_data_type = "Western Atlantic Hurricane Days"
+TC_data_type = "Atlantic Tropical Storms"
 plot_TC = true
 # outlier culling
 outliers = [0 95] # percentiles for culling
@@ -871,21 +873,21 @@ for i = 1:Nbands
 
     ## REPORT
     print(string("\n",bands[i,1],"-",bands[i,2],"s Band:\n"))
-    print(string("  Historical Trend is: ",round(oldb,sigdigits=2),"+/-",round(oldbstd*1.96,sigdigits=2),
-        " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep*1.96,sigdigits=2)," % rel. med.)\n"))
-    print(string("  Modern Trend is:     ",round(newb,sigdigits=2),"+/-",round(newbstd*1.96,sigdigits=2),
-        " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep*1.96,sigdigits=2)," % rel. med.)\n"))
-    print(string("  Complete Trend is:   ",round(allb,sigdigits=2),"+/-",round(allbstd*1.96,sigdigits=2),
-        " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep*1.96,sigdigits=2)," % rel. med.)\n"))
+    print(string("  Historical Trend is: ",round(oldb,sigdigits=2),"+/-",round(oldbstd,sigdigits=2),
+        " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep,sigdigits=2)," % rel. med.)\n"))
+    print(string("  Modern Trend is:     ",round(newb,sigdigits=2),"+/-",round(newbstd,sigdigits=2),
+        " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)\n"))
+    print(string("  Complete Trend is:   ",round(allb,sigdigits=2),"+/-",round(allbstd,sigdigits=2),
+        " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)\n"))
     if plot_TC
-        print(string("  Seis2TC Trend is: ",round(seis2TCtrend[end],sigdigits=2),"+/-",round(seis2TCe[end]*1.96,sigdigits=2),
+        print(string("  Seis2TC Trend is: ",round(seis2TCtrend[end],sigdigits=2),"+/-",round(seis2TCe[end],sigdigits=2),
             " ",TC_data_type,"/",unitstring,"\n"))
     end
 
     ## PLOT ALL THE DATA
     # plot data
     hpc = plot([oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],
-        lc=:black,lw=1.5,ylabel=unitstring,legend=:outerbottom,#topright, # used to be :outerbottom
+        lc=:black,lw=1.5,ylabel=unitstring,legend=:top,#:outerbottom,#topright, # used to be :outerbottom
         label=string(Dates.value(rollmedwind),"-Day Rolling Mean"),
         title=string(bands[i,1],"-",bands[i,2],"s Band"))
     scatter!(hpc,[oldTyear; newTyear[1]; newTyear],[oldDfilt; NaN; newDfilt],mc=:black,label="")
@@ -894,14 +896,14 @@ for i = 1:Nbands
     # plot!(hpc,xtmp,olda.+oldb.*xtmp,label=string("Hist. ",round(oldb,sigdigits=2),"+/-",round(oldbstd*1.96,sigdigits=2),
     #     " ",unitstring," (",round(oldbp,sigdigits=2),"+/-",round(oldep*1.96,sigdigits=2)," % rel. med.)"))
     # plot new trend
-    plot!(hpc,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newbstd*1.96,sigdigits=2),
-        " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep*1.96,sigdigits=2)," % rel. med.)"))
+    plot!(hpc,xtmp,newa.+newb.*xtmp,label=string("Mod.  ",round(newb,sigdigits=2),"+/-",round(newbstd,sigdigits=2),
+        " ",unitstring," (",round(newbp,sigdigits=2),"+/-",round(newep,sigdigits=2)," % rel. med.)"))
     # plot both trend
-    plot!(hpc,xtmp,alla.+allb.*xtmp,label=string("Comp. ",round(allb,sigdigits=2),"+/-",round(allbstd*1.96,sigdigits=2),
-        " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep*1.96,sigdigits=2)," % rel. med.)"))
+    plot!(hpc,xtmp,alla.+allb.*xtmp,label=string("Comp. ",round(allb,sigdigits=2),"+/-",round(allbstd,sigdigits=2),
+        " ",unitstring," (",round(allbp,sigdigits=2),"+/-",round(allep,sigdigits=2)," % rel. med.)"))
     # add TC data
     if plot_TC
-        gidx = findall(minimum([oldTyear; newTyear]) .<= Dates.year(TC_year) .<= maximum([oldTyear; newTyear]))
+        gidx = findall(minimum([oldTyear; newTyear]) .<= Dates.year.(TC_year) .<= maximum([oldTyear; newTyear]))
         hpc2 = twinx(hpc)
         plot!(hpc2,Dates.year.(TC_year[gidx]),TC_count[gidx],label=TC_data_type,legend=false,ylabel=TC_data_type)
         plot!(hpc2,Dates.year.(TC_year[gidx]),lf.movingmean(TC_count,5)[gidx],)#label="5-year median",
