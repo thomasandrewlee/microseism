@@ -13,14 +13,14 @@ clear all;
 clc;
 
 %% settings
-user_str = '/Users/thomaslee/';
+user_str = '/Users/tl7869/';
 c_bathy = [user_str,'Research/GEBCO_Bathymetry/' ...
     'gebco_2024/GEBCO_2024.nc'];
 bathy_deg_size = 0.5; % size of bathymetry grid boxes in degrees, will interpolate if need 
 c_spect = [user_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
 % the ww3 spectra files should be from readww3.m and makeglobalww3spect.m
     % leave empty string to skip spectra 
-c_output = [user_str,'Downloads/PrimaryCoefFitRun/'];
+c_output = [user_str,'Downloads/PrimaryCoef/'];
 c_lindisp = [user_str,'Desktop/MicroseismIntegration/lindisptables/'];
 % freqs = 1 ./ [4:0.25:21];
 freqs = 1 ./ [4:1:20];
@@ -125,19 +125,18 @@ else
             end
         end
     end
-
-    kdat = nan([1000 2]);
-    for j = 1:1000
-        % convert height to depth
-        hq = ones(length(kq),1).*j; 
-        % get frequencies for all k at specific h
-        fq = interp2(htab,ktab,ftab,hq,kq);
-        %do 1D interp of existing freq wavenumber profile
-        ktmp = interp1(fq,kq,[1/14, 1/20],'pchip','extrap');
-        % save value
-        kdat(j,:) = ktmp;
-    end
-    bwghttmp = 1./cosh(kdat.*[1:1000;1:1000]');
+    %  
+    % for j = 1:1000
+    %     % convert height to depth
+    %     hq = ones(length(kq),1).*j; 
+    %     % get frequencies for all k at specific h
+    %     fq = interp2(htab,ktab,ftab,hq,kq);
+    %     %do 1D interp of existing freq wavenumber profile
+    %     ktmp = interp1(fq,kq,[1/14, 1/20],'pchip','extrap');
+    %     % save value
+    %     kdat(j,:) = ktmp;
+    % end
+    % bwghttmp = 1./cosh(kdat.*[1:1000;1:1000]');
 
     % compute bathymetric effect
     Bweight = nan(size(kdat));
