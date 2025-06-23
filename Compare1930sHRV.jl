@@ -21,6 +21,7 @@ Last Modified: 6/18/2025
 - added more read in options for TC data, including days and counts, and now we actually
   properly compute the fit between the TC and microseism data. plots are ugly, but that can
   be fixed in post
+- added switch to either average or median hurricanes
 
 =#
 
@@ -52,7 +53,7 @@ using LombScargle
 # output
 c_dataout = string(usr_str,"Desktop/1930sComp/1930sHRVComp_AmpScl_Stack10_Med14_steps3_97/")
 c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_micrometricTAL/")
-c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_2hr30prct_TEST_TC_COUNTS/")
+c_dataout = string(usr_str,"Desktop/1930sComp/TEST5.5_microcorr_wideband_standard_2hr30prct_TEST_TC_DAYS/")
 # spectpaths
 # c_savespect_new = string(usr_str,"Desktop/MAI/HRV_BHZ_1988_2023_spectsave_3prct_12hr_NEW.jld")
 # c_savespect_old = string(usr_str,"Desktop/MAI/HRV_BHZ_1936_1940_spectsave_3prct_12hr_NEW.jld")
@@ -80,10 +81,10 @@ smoothing = 0.03 # smoothing window in Hz
 useroot = true # use square root instead of power
 # TC csv file
 #c_TC_file = string(usr_str,"Research/TC_Counts/VecchiKnutson/ts_count_2days_adjusted_1_15.csv") # deprecated
-#c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/huDaysWA.hurdat2.1851-2024.csv")
-c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/nTSplus.hurdat2.1851-2024.csv")
-#TC_data_type = "Western Atlantic Hurricane Days"
-TC_data_type = "Atlantic Tropical Storms"
+c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/huDaysWA.hurdat2.1851-2024.csv")
+#c_TC_file = string(usr_str,"Research/TC_Counts/hurricanedata_wenchang/nTSplus.hurdat2.1851-2024.csv")
+TC_data_type = "Western Atlantic Hurricane Days"
+#TC_data_type = "Atlantic Tropical Storms"
 plot_TC = true
 # outlier culling
 outliers = [0 95] # percentiles for culling
@@ -91,9 +92,11 @@ onedaymedian = true # resample to once-daily medians
 DaysInYear = 365.2422 # tropical year in days
 # channels to use for old
 goodchannels = ["HRV.LPZ" "HRV.LPE" "HRV.LPN"]
+## THIS OVERRIDES STUFF!!!
 # year step (if using this option, one-day median, rolling median, jday filter, and goodmonths don't work)
 yearwindstep = Dates.Year(1) # window size (this should be roughly equivalent to how many years of analog data there are)
         # set to 0 to use the old way
+yearwindowMedian = true # if false, do a weighted average instead
 # rolling median
 rollmedwind = Dates.Day(0) # set to zero for none
 rollmedstep = Dates.Day(0)
@@ -518,16 +521,6 @@ for i = 1:Nbands
         newDfilt0 = deepcopy(newDfilt)
         oldTyear0 = deepcopy(oldTyear)
         newTyear0 = deepcopy(newTyear)
-        # compute the oldTyear and oldDfilt for the old data
-        oldTyear = minimum(oldTyear0):Dates.value(yearwindstep):maximum(oldTyear0)
-        oldDfilt = fill!(rand(length(oldTyear)),NaN)
-        for j = 1:lastindex(oldTyear) # get the data
-            gidx = findall(oldTyear[j] .<= oldTyear0 .<= oldTyear[j]+Dates.value(yearwindstep))
-            if sum(.!isnan.(oldDfilt0[gidx]))>0 # if not all NaN
-                oldDfilt[j] = median(filter(!isnan,oldDfilt0[gidx]))
-            end
-        end
-        oldTyear = oldTyear .+ 0.5*Dates.value(yearwindstep) # convert from window start to window center
         # compute the data coverage weighting function
         bins = range(0,1,12) # bin the year fractions
         counts = zeros(length(bins)-1)
@@ -553,10 +546,37 @@ for i = 1:Nbands
                 gidx2 = findall(.!isnan.(newDfilt0[gidx]))
                 ytimestmp = rem.(newTyear0[gidx[gidx2]],1) # year fraction of good times
                 wghtstmp = wghtsitp(ytimestmp)
-                newDfilt[j] = lf.wghtdprctle(newDfilt0[gidx[gidx2]],wghtstmp,50,true)
+                if yearwindowMedian
+                    newDfilt[j] = lf.wghtdprctle(newDfilt0[gidx[gidx2]],wghtstmp,50,true)
+                else
+                    # normalize weights
+                    #wghtstmp = lf.unitnorm(wghtstmp)
+                    wghtstmp = wghtstmp ./ mean(wghtstmp)
+                    newDfilt[j] = mean(newDfilt0[gidx[gidx2]].*wghtstmp)
+                end
             end
         end
         newTyear = newTyear .+ 0.5*Dates.value(yearwindstep) # convert from window start to window center
+        # compute the oldTyear and oldDfilt for the old data
+        oldTyear = minimum(oldTyear0):Dates.value(yearwindstep):maximum(oldTyear0)
+        oldDfilt = fill!(rand(length(oldTyear)),NaN)
+        for j = 1:lastindex(oldTyear) # get the data
+            gidx = findall(oldTyear[j] .<= oldTyear0 .<= oldTyear[j]+Dates.value(yearwindstep))
+            if sum(.!isnan.(oldDfilt0[gidx]))>0 # if not all NaN
+                gidx2 = findall(.!isnan.(oldDfilt0[gidx]))
+                ytimestmp = rem.(oldTyear0[gidx[gidx2]],1) # year fraction of good times
+                wghtstmp = wghtsitp(ytimestmp)
+                if yearwindowMedian
+                    #oldDfilt[j] = median(filter(!isnan,oldDfilt0[gidx]))
+                    oldDfilt[j] = lf.wghtdprctle(oldDfilt0[gidx[gidx2]],wghtstmp,50,true)
+                else
+                    #oldDfilt[j] = mean(filter(!isnan,oldDfilt0[gidx]))
+                    wghtstmp = wghtstmp ./ mean(wghtstmp)
+                    oldDfilt[j] = mean(oldDfilt0[gidx[gidx2]].*wghtstmp)
+                end
+            end
+        end
+        oldTyear = oldTyear .+ 0.5*Dates.value(yearwindstep) # convert from window start to window center
     else
         ## RESAMPLE TO ONE-DAY
         if onedaymedian
