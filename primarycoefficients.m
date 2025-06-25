@@ -34,6 +34,7 @@ violincompcutoff = 12; % lower period bound in seconds
 scale0 = 0.0; % starting scale value to use in percent
 gif_fnames = false; % write file names for alphabetical ordering across varied systems
 squareK = true; % square the transfer function (K) values given in Bweight
+amplitudefit = true; % take square root of energy when doing fitting (this will default squareK to false)
 
 %setup output
 if ~isfolder(c_output)
@@ -152,7 +153,7 @@ else
     save([c_output,'Bweight.mat'],'Bweight','blon','blat','freqs','-mat','-v7.3');
 end
 
-if squareK
+if squareK & ~amplitudefit
     Bweight = Bweight.^2;
 end
 
@@ -309,7 +310,10 @@ if ~isempty(c_spect)
     % load spectra
     load(c_spect); % loads D f t lat 
     % lon is assumed to be single, D has dims lon, lat, freq, time
-    Dspect = D; % in decibels
+    Dspect = D; % in decibels (energy)
+    if amplitudefit
+        Dspect = sqrt(Dspect); % amplitude
+    end
     fspect = f;
     tspect = t; % this is probably single (otherwise time to write more code)
     latspect = lat; % also probably single (will need a separate read in for hemispheric)
