@@ -20,7 +20,7 @@ bathy_deg_size = 0.5; % size of bathymetry grid boxes in degrees, will interpola
 c_spect = [user_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
 % the ww3 spectra files should be from readww3.m and makeglobalww3spect.m
     % leave empty string to skip spectra 
-c_output = [user_str,'Downloads/PrimaryCoefFitRun/'];
+c_output = [user_str,'Downloads/PrimaryCoefFitRunAmplitude/'];
 c_lindisp = [user_str,'Desktop/MicroseismIntegration/lindisptables/'];
 % freqs = 1 ./ [4:0.25:21];
 freqs = 1 ./ [4:1:20];
