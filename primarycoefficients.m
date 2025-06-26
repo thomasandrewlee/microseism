@@ -13,7 +13,8 @@ clear all;
 clc;
 
 %% settings
-user_str = '/Users/tl7869/';
+%user_str = '/Users/tl7869/';
+user_str = '/Users/thomaslee/';
 c_bathy = [user_str,'Research/GEBCO_Bathymetry/' ...
     'gebco_2024/GEBCO_2024.nc'];
 bathy_deg_size = 0.5; % size of bathymetry grid boxes in degrees, will interpolate if need 
@@ -34,7 +35,8 @@ violincompcutoff = 12; % lower period bound in seconds
 scale0 = 0.0; % starting scale value to use in percent
 gif_fnames = false; % write file names for alphabetical ordering across varied systems
 squareK = true; % square the transfer function (K) values given in Bweight
-amplitudefit = true; % take square root of energy when doing fitting (this will default squareK to false)
+amplitudefit = false; % take square root of energy when doing fitting (this will default squareK to false)
+usedots = false; % use black dots to represent station data, vs red crosses
 
 %setup output
 if ~isfolder(c_output)
@@ -162,8 +164,9 @@ end
 %clow = min(log10(Bweight),[],"all","omitnan");
 clow = -75;
 chigh = max(log10(Bweight),[],"all","omitnan");
+hf = figure;
 for i = 1:length(freqs)
-    hf = figure;
+    set(0,'CurrentFigure',hf);
     ha1 = subplot(2,1,1);
     imagesc(ha1,blon,blat,log10(Bweight(:,:,i))');
     ha1.YDir = 'normal';
@@ -186,11 +189,12 @@ for i = 1:length(freqs)
         fstr = [c_output,'weight_',num2str(1/freqs(i),'%05.2f'),'s.eps'];
         exportgraphics(hf,fstr,'ContentType','vector','BackgroundColor','none');
     end
-    close(hf);
+    clf(hf);
 end
+close(hf);
 
 %% make lat plot
-tmp = squeeze(mean(mean(Bweight,3,"omitnan"),1,"omitnan"))'
+tmp = squeeze(mean(mean(Bweight,3,"omitnan"),1,"omitnan"))';
 plot(blat,tmp,'k-','linewidth',1.5);
 xlabel('Latitude'); ylabel('Primary Coupling Coefficient');
 title('Average Coupling By Latitude');
@@ -253,6 +257,8 @@ BincrN = nan(length(percents),length(freqs));
 Bprct = nan(length(percents),length(freqs));
 BprctS = nan(length(percents),length(freqs));
 BprctN = nan(length(percents),length(freqs));
+% init figure
+hf = figure; 
 for j = 1:length(freqs)
     % get new query frequencies
     oldprd = 1/freqs(j);
@@ -273,7 +279,8 @@ for j = 1:length(freqs)
     BprctS(:,j) = tmpprctS;
     BprctN(:,j) = tmpprctN;
     % plot
-    hf = figure; ha = axes(hf);
+    set(0,'CurrentFigure',hf);
+    ha = axes;
     plot(ha,percents,tmpprct,'.k-');
     hold on
     plot(ha,percents,tmpprctN,'.r-');
@@ -284,8 +291,9 @@ for j = 1:length(freqs)
     ha.YLabel.String = 'Percent Increase in Energy Converted to Microseism';
     axis padded;
     savefig([c_output,'percent_',num2str(1/freqs(j),'%05.2f'),'s'],hf.Number,'pdf');
-    close(hf);
+    clf(hf);
 end
+close(hf);
 % plot
 hf = figure; ha = axes(hf);
 imagesc(1./freqs,percents,log10(Bprct));
@@ -329,22 +337,29 @@ if ~isempty(c_spect)
     Dseaflr = 10*log10(Bsumspect.*(10.^(Dspect/10)));
 
     %% read rick's violin plot data
-    c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/violinplot.mat'];
+    %c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/violinplot.mat'];
+    c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/vel2_violin.mat'];
     if isfile(c_violindat)
         tmp = load(c_violindat);
         hfv = figure; % persistent violin plot handle
         hav = axes(hfv);
-        %scatter(hav,tmp.P,tmp.M,'k.'); % for plotting unnormalized
-        scatter(hav,tmp.P,tmp.M_norm,'k.');
-
+        if usedots
+            %scatter(hav,tmp.P,tmp.M,'k.'); % for plotting unnormalized
+            scatter(hav,tmp.P,tmp.M_norm,'k.');
+            hold(hav,'on');
+            %plot(hav,tmp.psd_periods,median(tmp.M),'k--');
+            plot(hav,tmp.psd_periods,median(tmp.M_norm),'k--');
+            axis(hav,'padded');
+        else
+            errorbar(hav,psd_periods,median(M_norm),M_norm_med_std,M_norm_med_std,...
+                0.95*ones(size(M_norm_med_std)),0.95*ones(size(M_norm_med_std)),...
+                'ro','linewidth',1.5,'linestyle','-.');
+            hold(hav,'on');
+        end
         % labels
         hav.Title.String = 'Global Observations';
         hav.XLabel.String = 'Period (s)';
         hav.YLabel.String = '% Relative to the Median per Year';
-        hold(hav,'on');
-        %plot(hav,tmp.psd_periods,median(tmp.M),'k--');
-        plot(hav,tmp.psd_periods,median(tmp.M_norm),'k--');
-        axis(hav,'padded');
         % put the seafloor ratios for stretch, shift, and scale on this along
         % with best fit as we calculate things
         % for this, we need the matching indices in fspect
@@ -591,8 +606,6 @@ if ~isempty(c_spect)
     lgdstrscl = [num2str(percents(minidx)),'% Scale'];
     legend(hav,[hpstrtch,hpshft,hpscale],{lgdstrstrtch,lgdstrshft,lgdstrscl},...
         'Location','southoutside');
-    bookfonts_TNR;
-    savefig([c_output,'fit_violin'],hfv.Number,'pdf');
     % plot fit evolution
     hf = figure; ha = axes(hf);
     plot(ha,percents,stretchfit,'k-');
@@ -647,6 +660,9 @@ if ~isempty(c_spect)
     close(hf);
 
     % final mods
+    set(0,'CurrentFigure',hfv);
     hav.YLabel.String = 'Demeaned % Relative to the Median per Year';
     xlim(hav,[12,20]);
+    bookfonts_TNR;
+    savefig([c_output,'fit_violin'],hfv.Number,'pdf');
 end
