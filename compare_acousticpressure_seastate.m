@@ -17,7 +17,12 @@
 %
 % last modded: 06/26/2025
 % this update focuses more effort on the wavewatch data and allows for
-% comparison of both seasonal variations and time-series 
+% comparison of both seasonal variations and time-series. key changes:
+%   - usepts allows for single frequency instead of bands to be used
+%   - climatologies read in from ww3climatology.m (this should be used with
+%       the 'usepts' switch turned on
+%   - new sets of plots comparing seasonality and event counts for MERMAID,
+%       associated WW3 data, and whole-basin WW3 data
 
 %% init
 clc
@@ -33,6 +38,7 @@ c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.ma
 c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L/'];
 c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons/data.mat']; % climatology data (precomputed)
 c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_new/'];
+c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
 % c_output = '/Users/thomaslee/Downloads/acoustic_v_surface/';
@@ -41,8 +47,10 @@ use50 = false; % otherwise use 95
 % bands (in seconds)
 % bands = [[1:17]' [4:20]']; % col1 = band start (s), col2 = band end (s)
 %bands = [1.5 5; 5 10; 1.5 10];
-bands = [9 11; 4 6; 2 4; 1 3]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz
+%bands = [9 11; 4 6; 2 4; 1 3]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz
 %bands = [9.5 10.5; 4.5 5.5; 2.5 3.5; 1.5 2.5]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz (1s bands)
+usepts = true; % ignore bands use first frequency as instant value
+bands = [1/0.1; 1/0.2; 1/0.3; 1/0.5];
 % copernicus vars
 % cvars = {'VCMX','VHM0',...
 %     'VHM0_SW1','VHM0_SW2','VHM0_WW',...
@@ -147,9 +155,16 @@ if useww3
     ww3prd = 1 ./ ww3f;
 end
 for i = 1:Nbands
-    bidx{i} = find((bands(i,1)<=prd) & (prd<=bands(i,2)));
-    if useww3
-        ww3bidx{i} = find((bands(i,1)<=ww3prd) & (ww3prd<=bands(i,2)));
+    if usepts
+        [~,bidx{i}] = min(abs((bands(i,1)-prd)));
+        if useww3
+            [~,ww3bidx{i}] = min(abs((bands(i,1)-ww3prd)));
+        end
+    else
+        bidx{i} = find((bands(i,1)<=prd) & (prd<=bands(i,2)));
+        if useww3
+            ww3bidx{i} = find((bands(i,1)<=ww3prd) & (ww3prd<=bands(i,2)));
+        end
     end
 end
 % initialize counter
@@ -187,27 +202,38 @@ for i = 1:length(MERDAT)
                 else
                     dattmp = MERDAT(i).dat(j).p95(bidx{l},k);
                 end
-                % convert from dB to power
-                powtmp = 10 .^ (dattmp./10);
-                % compute integration in band
-                powsum = trapz(freq(bidx{l}),powtmp);
-                % convert back to dB
-                dbsum = 10*log10(powsum);
-                % save into variables
-                bandpow(l,colnum) = dbsum;
-                % do it for ww3 if needed
-                if useww3
-                    % get proper data
-                    dattmp = ww3d(ww3lonidx,ww3latidx,ww3bidx{l},ww3tidx);
-                    dattmp = double(squeeze(dattmp));
-                    % % convert from dB to power
+                if usepts
+                    bandpow(l,colnum) = dattmp;
+                    % do it for ww3 if needed
+                    if useww3
+                        % get proper data
+                        dattmp = ww3d(ww3lonidx,ww3latidx,ww3bidx{l},ww3tidx);
+                        dattmp = double(squeeze(dattmp));
+                        % save into variables
+                        ww3pow(l,colnum) = dattmp;
+                    end
+                else
                     powtmp = 10 .^ (dattmp./10);
                     % compute integration in band
-                    powsum = trapz(freq(ww3bidx{l}),powtmp);
-                    % convert to dB e=
+                    powsum = trapz(freq(bidx{l}),powtmp);
+                    % convert back to dB
                     dbsum = 10*log10(powsum);
                     % save into variables
-                    ww3pow(l,colnum) = dbsum;
+                    bandpow(l,colnum) = dbsum;
+                    % do it for ww3 if needed
+                    if useww3
+                        % get proper data
+                        dattmp = ww3d(ww3lonidx,ww3latidx,ww3bidx{l},ww3tidx);
+                        dattmp = double(squeeze(dattmp));
+                        % % convert from dB to power
+                        powtmp = 10 .^ (dattmp./10);
+                        % compute integration in band
+                        powsum = trapz(freq(ww3bidx{l}),powtmp);
+                        % convert to dB e=
+                        dbsum = 10*log10(powsum);
+                        % save into variables
+                        ww3pow(l,colnum) = dbsum;
+                    end
                 end
             end
             % save copernicus vars
@@ -231,12 +257,30 @@ ha.Title.String = 'Power in Bands for All Buoys';
 legend(ha,num2str(bands));
 savefig([c_output,'bands_w_time'],hf.Number,'pdf');
 close(hf);
+% make same figure but split up as line plots
+hf = figure;
+for i = 1:Nbands
+    ha = subplot(Nbands,1,i);
+    scatter(ha,times,bandpow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
+    ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for All Buoys'];
+end
+savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
+close(hf);
 if useww3
     hf = figure; ha = axes;
     scatter(ha,times,ww3pow,'.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
     ha.Title.String = 'Power in Bands for WW3';
     legend(ha,num2str(bands));
     savefig([c_output,'bands_w_time_ww3'],hf.Number,'pdf');
+    close(hf);
+    % make same figure but split up as line plots
+    hf = figure;
+    for i = 1:Nbands
+        ha = subplot(Nbands,1,i);
+        scatter(ha,times,ww3pow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5))
+        ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for All Buoys'];
+    end
+    savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
     close(hf);
 end
 
@@ -496,11 +540,97 @@ if useww3
     close(hf);
 
     %% read in the data from climatology
+    CLIM = load(c_MAT_WW3CLIM);
+    % check if CLIM.plotfrq is the same as Nbands
+    if length(Nbands)==plotfrq
 
-    %% add mermaid data to plots of seasonality 
+    %% add mermaid data to plots of seasonality on a map
+    % load coastline
+    cst = load(c_coast);
     % grabbed code from ww3 climatology
+    hf1 = figure; % new figure
+    hf1.Position = [1 1 1000 500];
+    if makeanim
+        hf2 = figure; % initialize figure
+        hf2.Position = [1 1 1000 500];
+    end
+    count = 0; % initialize count
+    for i = 1:length(CLIM.plotfrq)
+        % get target frequency index
+        [~,fidx] = min(abs(CLIM.plotfrq(i)-CLIM.FRQ));
+        % determine cbounds
+        cmin = prctile(CLIM.DOYDAT(:,:,fidx,:),20,"all");
+        cmax = prctile(CLIM.DOYDAT(:,:,fidx,:),95,"all");
+        % set figure
+        set(0,'CurrentFigure',hf1);
+        % loop over plot days to make grid plot
+        for j = 1:length(CLIM.plotdoy)
+            % get target day index
+            [~,didx] = min(abs(CLIM.plotdoy(j)-CLIM.wndctr));
+            % advance count
+            count = count+1;
+            % create subplot
+            ha = subplot(length(CLIM.plotfrq),length(CLIM.plotdoy),count); % make grid of plots
+            % plot power
+            imagesc(ha,CLIM.LON,CLIM.LAT,CLIM.DOYDAT(:,:,fidx,didx)');
+            ha.YDir = 'normal';
+            hold(ha,'on');
+            plot(ha,cst.clon,cst.clat,'w','LineWidth',1) % coastline
+            % NEW CODE HERE TO ADD MERMAID POWER
+            % get mermaid data points within time window
+            midx = find(); % variable is time
+
+
+
+            % plot mermaid data points
+            scatter(ha,lon(midx),lat(midx),...
+                'MarkerSize',,'MarkerColor',);
+
+
+
+
+            % set limits and finish up
+            xlim([min(CLIM.LON),max(CLIM.LON)]);
+            ylim([min(CLIM.LAT),max(CLIM.LAT)]);
+            colorbar();
+            %axis equal;
+            bookfonts_TNR(8);
+            title(['DOY: ',num2str(wndctr(didx)),' @',num2str(FRQ(fidx)),'Hz']);
+            clim([cmin,cmax]);
+        end
+        % make animations at this frequency if desired
+        if makeanim
+            % make animation dir
+            if ~isfolder([c_dataout,num2str(FRQ(fidx)),'Hz_pow/'])
+                mkdir([c_dataout,num2str(FRQ(fidx)),'Hz_pow/'])
+            end
+            % loop and plot
+            for j = 1:animstep:length(wndctr)
+                %hf2 = figure; 
+                set(0,'CurrentFigure',hf2);
+                ha = axes;
+                imagesc(ha,LON,LAT,DOYDAT(:,:,fidx,j)');
+                ha.YDir = 'normal';
+                hold(ha,'on');
+                plot(ha,clon,clat,'w','LineWidth',1) % coastline
+                xlim([lonmin,lonmax]);
+                ylim([latmin,latmax]);
+                colorbar();
+                title(['DOY: ',num2str(wndctr(j)),' @',num2str(FRQ(fidx)),'Hz']);
+                if fixcbounds
+                    clim([cmin,cmax]);
+                end
+                bookfonts_TNR(12);
+                savefig([c_dataout,num2str(FRQ(fidx)),'Hz_pow/',num2str(wndctr(j))],hf2.Number,'png');
+                clf(hf2,'reset');
+            end
+        end
+    end
+    savefig([c_dataout,'seasonalpowermap'],hf1.Number,'pdf');
 
     %% make seasonality power trend plots by band in power-power space
+    % plot power vs power with color indicating doy (wraparound)
+    % plot 1-1 line
 
 
     %% compute events in power-time space exceeding Xth percentile
@@ -510,20 +640,18 @@ if useww3
 
     % for MERMAID
 
-    % for copernicus average wave height across basin
+    % for copernicus average wave height across basin?? (maybe we don't
+    % need this) kiss
 
     % compare results
 
-    % these should probably be binned by month as counts to compare
-
-
+    % these should probably be binned by month or week or something as counts to compare
 
 
     %% compute transfer functions??
     
 
-    % look at seasonality of transfers
-
+    % look at seasonality of transfers??
 
 
 end

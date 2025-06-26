@@ -485,6 +485,24 @@ if ~isempty(c_spect)
     savefig([c_output,'perturbationseafloor_stretch'],hf.Number,'pdf');
     close(hf);
 
+    % linear scale
+    hf = figure; ha = axes(hf);
+    plot(ha,1./fspect,10.^(Dspectpert(lidx,:)/10),'LineWidth',1.5);
+    legend(ha,num2str(percents(lidx)'));
+    ha.Title.String = 'Perturbed WW3 Spectra (Stretch)';
+    ha.XLabel.String = 'Period (s)';
+    ha.YLabel.String = 'Spectra at Sea-surface';
+    savefig([c_output,'perturbationsurface_stretchlin'],hf.Number,'pdf');
+    %close(hf);
+    hf = figure; ha = axes(hf);
+    plot(ha,1./fspect,10.^(Dseaflrpert(lidx,:)/10),'LineWidth',1.5);
+    legend(ha,num2str(percents(lidx)'));
+    ha.Title.String = 'Perturbed WW3 Spectra at Seafloor (Stretch)';
+    ha.XLabel.String = 'Period (s)';
+    ha.YLabel.String = 'Spectra at Seafloor';
+    savefig([c_output,'perturbationseafloor_stretchlin'],hf.Number,'pdf');
+    %close(hf);
+
     % plot change as ratio as a function of per    
     hf = figure; ha = axes(hf);
     plot(ha,1./fspect,(10.^(Dspectpert(lidx,:)/10))./(10.^(Dspect'/10)),'LineWidth',1.5);
@@ -493,7 +511,7 @@ if ~isempty(c_spect)
     ha.XLabel.String = 'Period (s)';
     ha.YLabel.String = 'Perturbed / Unperturbed Ratio';
     savefig([c_output,'perturbationratiosurface_stretch'],hf.Number,'pdf');
-    close(hf);
+    %close(hf);
     hf = figure; ha = axes(hf);
     plot(ha,1./fspect,(10.^(Dseaflrpert(lidx,:)/10))./(10.^(Dseaflr'/10)),'LineWidth',1.5);
     legend(ha,num2str(percents(lidx)'));
@@ -501,7 +519,27 @@ if ~isempty(c_spect)
     ha.XLabel.String = 'Period (s)';
     ha.YLabel.String = 'Perturbed / Unperturbed Ratio';
     savefig([c_output,'perturbationratioseafloor_stretch'],hf.Number,'pdf');
-    close(hf);
+    %close(hf);
+
+    % plot change as difference as a function of per    
+    hf = figure; ha = axes(hf);
+    plot(ha,1./fspect,(10.^(Dspectpert(lidx,:)/10))-(10.^(Dspect'/10)),'LineWidth',1.5);
+    legend(ha,num2str(percents(lidx)'));
+    ha.Title.String = 'Relative Perturbed WW3 Sea-Surface Energy (Stretch)';
+    ha.XLabel.String = 'Period (s)';
+    ha.YLabel.String = 'Perturbed - Unperturbed Difference';
+    savefig([c_output,'perturbationdiffsurface_stretch'],hf.Number,'pdf');
+    %close(hf);
+    hf = figure; ha = axes(hf);
+    plot(ha,1./fspect,(10.^(Dseaflrpert(lidx,:)/10))-(10.^(Dseaflr'/10)),'LineWidth',1.5);
+    legend(ha,num2str(percents(lidx)'));
+    ha.Title.String = 'Relative Perturbed WW3 Seafloor Energy (Stretch)';
+    ha.XLabel.String = 'Period (s)';
+    ha.YLabel.String = 'Perturbed - Unperturbed Difference';
+    savefig([c_output,'perturbationdiffseafloor_stretch'],hf.Number,'pdf');
+    %close(hf);
+
+
 
     %% same plots but now with shift instead of stretch
     % perturb the spectra by shifting as a constant (percent of median
