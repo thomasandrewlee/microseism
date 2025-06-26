@@ -15,7 +15,9 @@
 % 'readww3.m', and comes in the form of .mat files with spectras on a grid
 % in time. (4-D: lon, lat, freq, time).
 %
-% last modded:
+% last modded: 06/26/2025
+% this update focuses more effort on the wavewatch data and allows for
+% comparison of both seasonal variations and time-series 
 
 %% init
 clc
@@ -23,11 +25,14 @@ clear all
 close all
 
 %% setup
+% path
+usr_str = '/Users/thomaslee/'
 % data sources
 useww3 = true; % also compare ww3 data
-c_MERDAT_COP = '/Users/tl7869/Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat';
-c_MAT_WW3 = '/Users/tl7869/Desktop/WW3_OUT_MED_P2L/';
-c_output = '/Users/tl7869/Desktop/acoustic_v_surface_w_bathy_new/';
+c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
+c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L/'];
+c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons/data.mat'];
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_new/'];
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
 % c_output = '/Users/thomaslee/Downloads/acoustic_v_surface/';
@@ -35,18 +40,22 @@ c_output = '/Users/tl7869/Desktop/acoustic_v_surface_w_bathy_new/';
 use50 = false; % otherwise use 95
 % bands (in seconds)
 % bands = [[1:17]' [4:20]']; % col1 = band start (s), col2 = band end (s)
-bands = [1.5 5; 5 10; 1.5 10];
+%bands = [1.5 5; 5 10; 1.5 10];
+bands = [9 11; 4 6; 2 4; 1 3]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz
+%bands = [9.5 10.5; 4.5 5.5; 2.5 3.5; 1.5 2.5]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz (1s bands)
 % copernicus vars
 % cvars = {'VCMX','VHM0',...
 %     'VHM0_SW1','VHM0_SW2','VHM0_WW',...
 %     'VMDR_SW1','VMDR_SW2','VMDR_WW',...
 %     'VTM01_SW1','VTM01_SW2','VTM01_WW'};
-cvars = {'VHM0',...
-    'VHM0_SW1','VHM0_SW2','VHM0_WW',...
-    'VMDR_SW1','VMDR_SW2','VMDR_WW',...
-    'VTM01_SW1','VTM01_SW2','VTM01_WW'};
+% cvars = {'VHM0',...
+%     'VHM0_SW1','VHM0_SW2','VHM0_WW',...
+%     'VMDR_SW1','VMDR_SW2','VMDR_WW',...
+%     'VTM01_SW1','VTM01_SW2','VTM01_WW'};
+cvars = {'VHMO','VHMO_SW1','VHMO_SW2','VHMO_WW'}; % pared down version
 % climatology params
-climwind = 28; % in days
+% climwind = 28; % in days
+climwind = 61; % in days % 61 is used in ww3climatology
 climstep = 1; % in days
 
 % setupdir
