@@ -611,6 +611,10 @@ if useww3
     %% make seasonality power trend plots by band in power-power space
     % plot power vs power with color indicating doy (wraparound)
     % plot 1-1 line
+    % merclim.mean and climctrs
+    % ww3clim.mean and climctrs
+    % CLIM.SPECTDOYDAT(fidx,:) and wndctr
+    scatter('MarkerColor',doy???)
 
 
     %% compute events in power-time space exceeding Xth percentile
