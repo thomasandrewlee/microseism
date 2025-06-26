@@ -23,6 +23,9 @@
 %       the 'usepts' switch turned on
 %   - new sets of plots comparing seasonality and event counts for MERMAID,
 %       associated WW3 data, and whole-basin WW3 data
+%   - NOTE: data from ww3climatology is WHOLE-BASIN data as opposed to
+%       everything else in this code which is either along MERMAID paths or
+%       associated with them
 
 %% init
 clc
@@ -577,17 +580,21 @@ if useww3
             hold(ha,'on');
             plot(ha,cst.clon,cst.clat,'w','LineWidth',1) % coastline
             % NEW CODE HERE TO ADD MERMAID POWER
-            % get mermaid data points within time window
-            midx = find(); % variable is time
 
-
-
+            % get subset of mermaid points within seasonal window
+            wndstr = CLIM.plotdoy(j)-climwind/2; % NOTE: climwind is set in this script
+            wndend = CLIM.plotdoy(j)+climwind/2;
+            if wndstr<=0 % overflow low
+                didx = find((doy>=wndstr+365)|(doy<=wndend));
+            elseif wndend>=365 % overflow high
+                didx = find((doy>=wndstr)|(doy<=wndend-365));
+            else % normal case
+                didx = find((doy>=wndstr)&(doy<=wndend));
+            end
             % plot mermaid data points
             scatter(ha,lon(midx),lat(midx),...
-                'MarkerSize',,'MarkerColor',);
-
-
-
+                'MarkerSize',bandpow(k,midx),'MarkerColor',bandpow(k,midx));
+            
 
             % set limits and finish up
             xlim([min(CLIM.LON),max(CLIM.LON)]);
@@ -598,35 +605,8 @@ if useww3
             title(['DOY: ',num2str(wndctr(didx)),' @',num2str(FRQ(fidx)),'Hz']);
             clim([cmin,cmax]);
         end
-        % make animations at this frequency if desired
-        if makeanim
-            % make animation dir
-            if ~isfolder([c_dataout,num2str(FRQ(fidx)),'Hz_pow/'])
-                mkdir([c_dataout,num2str(FRQ(fidx)),'Hz_pow/'])
-            end
-            % loop and plot
-            for j = 1:animstep:length(wndctr)
-                %hf2 = figure; 
-                set(0,'CurrentFigure',hf2);
-                ha = axes;
-                imagesc(ha,LON,LAT,DOYDAT(:,:,fidx,j)');
-                ha.YDir = 'normal';
-                hold(ha,'on');
-                plot(ha,clon,clat,'w','LineWidth',1) % coastline
-                xlim([lonmin,lonmax]);
-                ylim([latmin,latmax]);
-                colorbar();
-                title(['DOY: ',num2str(wndctr(j)),' @',num2str(FRQ(fidx)),'Hz']);
-                if fixcbounds
-                    clim([cmin,cmax]);
-                end
-                bookfonts_TNR(12);
-                savefig([c_dataout,num2str(FRQ(fidx)),'Hz_pow/',num2str(wndctr(j))],hf2.Number,'png');
-                clf(hf2,'reset');
-            end
-        end
     end
-    savefig([c_dataout,'seasonalpowermap'],hf1.Number,'pdf');
+    savefig([c_dataout,'seasonalpowermapwMERMAID'],hf1.Number,'pdf');
 
     %% make seasonality power trend plots by band in power-power space
     % plot power vs power with color indicating doy (wraparound)
