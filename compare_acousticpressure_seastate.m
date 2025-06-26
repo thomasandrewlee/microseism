@@ -26,12 +26,12 @@ close all
 
 %% setup
 % path
-usr_str = '/Users/thomaslee/'
+usr_str = '/Users/thomaslee/';
 % data sources
 useww3 = true; % also compare ww3 data
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
 c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L/'];
-c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons/data.mat'];
+c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons/data.mat']; % climatology data (precomputed)
 c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_new/'];
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
@@ -495,8 +495,32 @@ if useww3
     savefig([c_output,'mermaid_seasonality_mean'],hf.Number,'pdf')
     close(hf);
 
-    %% compute transfer functions
+    %% read in the data from climatology
 
+    %% add mermaid data to plots of seasonality 
+    % grabbed code from ww3 climatology
+
+    %% make seasonality power trend plots by band in power-power space
+
+
+    %% compute events in power-time space exceeding Xth percentile
+    % this is similar to ww3 climatology work
+
+    % for ww3 p2l
+
+    % for MERMAID
+
+    % for copernicus average wave height across basin
+
+    % compare results
+
+    % these should probably be binned by month as counts to compare
+
+
+
+
+    %% compute transfer functions??
+    
 
     % look at seasonality of transfers
 
