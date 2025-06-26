@@ -351,8 +351,8 @@ if ~isempty(c_spect)
             plot(hav,tmp.psd_periods,median(tmp.M_norm),'k--');
             axis(hav,'padded');
         else
-            errorbar(hav,psd_periods,median(M_norm),M_norm_med_std,M_norm_med_std,...
-                0.95*ones(size(M_norm_med_std)),0.95*ones(size(M_norm_med_std)),...
+            errorbar(hav,tmp.psd_periods,median(tmp.M_norm),tmp.M_norm_med_std,tmp.M_norm_med_std,...
+                0.95*ones(size(tmp.M_norm_med_std)),0.95*ones(size(tmp.M_norm_med_std)),...
                 'ro','linewidth',1.5,'linestyle','-.');
             hold(hav,'on');
         end
@@ -452,7 +452,7 @@ if ~isempty(c_spect)
     plot(ha,percents,stretchfit,'k-');
     hold(ha,'on');
     hp = scatter(percents(minidx),minL,'r*');
-    legend(ha,hp,['Minima of ',num2str(minL),' @',num2str(percents(minidx))]);
+    legend(ha,hp,['Minima of ',num2str(minL),' @',num2str(percents(minidx)),'%']);
     ha.Title.String = 'Fit as Function of % Stretch';
     ha.XLabel.String = '% Stretch';
     ha.YLabel.String = 'Fit (L2)';
@@ -460,7 +460,7 @@ if ~isempty(c_spect)
     xlim([0,0.015]);
     savefig([c_output,'fit_stretch'],hf.Number,'pdf');
     close(hf);
-    pause;
+    %pause;
 
     % plot change with perturbation
     if length(percents)>Nplotlines
