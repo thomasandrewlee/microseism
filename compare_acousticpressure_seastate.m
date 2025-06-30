@@ -34,13 +34,13 @@ close all
 
 %% setup
 % path
-usr_str = '/Users/thomaslee/';
+usr_str = '/Users/tl7869/';
 % data sources
 useww3 = true; % also compare ww3 data
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
-c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L/'];
+c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_1500/'];
 c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons/data.mat']; % climatology data (precomputed)
-c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_new/'];
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_1500/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
@@ -99,19 +99,29 @@ if useww3
         if sum(size(ww3d,1:3)==size(D,1:3))==3
             % merge
             ww3d = cat(4,ww3d,D);
-            try
-               ww3t = [ww3t; t];
-            catch ME
-               if (strcmp(ME.identifier,'MATLAB:catenate:dimensionMismatch'))
-                    disp(['Dimension mismatch occurred: First argument has dims [', ...
-                        num2str(size(A)),'] while second has dims [', ...
-                        num2str(size(B)),']']);
-                    disp('Trying [ww3t t] instead of [ww3t; t]...');
-                    ww3t = [ww3t t];
-                    disp('Success!');
-               end
-               rethrow(ME)
-            end  
+            % check time dims
+            [tmprow,tmpcol] = size(t);
+            if tmprow == 1
+                ww3t = [ww3t; t']; % t is datenum
+            elseif tmpcol == 1
+                ww3t = [ww3t; t];
+            else
+                error('Dimensions of ''t'' not expected, something wrong!')
+            end
+
+            % try
+            %    ww3t = [ww3t; t];
+            % catch ME
+            %    if (strcmp(ME.identifier,'MATLAB:catenate:dimensionMismatch'))
+            %         disp(['Dimension mismatch occurred: First argument has dims [', ...
+            %             num2str(size(A)),'] while second has dims [', ...
+            %             num2str(size(B)),']']);
+            %         disp('Trying [ww3t t] instead of [ww3t; t]...');
+            %         ww3t = [ww3t t];
+            %         disp('Success!');
+            %    end
+            %    rethrow(ME)
+            % end  
         else
             % interpolate
             D1 = interp3()
@@ -280,8 +290,8 @@ if useww3
     hf = figure;
     for i = 1:Nbands
         ha = subplot(Nbands,1,i);
-        scatter(ha,times,ww3pow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5))
-        ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for All Buoys'];
+        scatter(ha,times,ww3pow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5);
+        ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for WW3'];
     end
     savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
     close(hf);
@@ -547,89 +557,89 @@ if useww3
     % check if CLIM.plotfrq is the same as Nbands
     if length(Nbands)==plotfrq
 
-    %% add mermaid data to plots of seasonality on a map
-    % load coastline
-    cst = load(c_coast);
-    % grabbed code from ww3 climatology
-    hf1 = figure; % new figure
-    hf1.Position = [1 1 1000 500];
-    if makeanim
-        hf2 = figure; % initialize figure
-        hf2.Position = [1 1 1000 500];
-    end
-    count = 0; % initialize count
-    for i = 1:length(CLIM.plotfrq)
-        % get target frequency index
-        [~,fidx] = min(abs(CLIM.plotfrq(i)-CLIM.FRQ));
-        % determine cbounds
-        cmin = prctile(CLIM.DOYDAT(:,:,fidx,:),20,"all");
-        cmax = prctile(CLIM.DOYDAT(:,:,fidx,:),95,"all");
-        % set figure
-        set(0,'CurrentFigure',hf1);
-        % loop over plot days to make grid plot
-        for j = 1:length(CLIM.plotdoy)
-            % get target day index
-            [~,didx] = min(abs(CLIM.plotdoy(j)-CLIM.wndctr));
-            % advance count
-            count = count+1;
-            % create subplot
-            ha = subplot(length(CLIM.plotfrq),length(CLIM.plotdoy),count); % make grid of plots
-            % plot power
-            imagesc(ha,CLIM.LON,CLIM.LAT,CLIM.DOYDAT(:,:,fidx,didx)');
-            ha.YDir = 'normal';
-            hold(ha,'on');
-            plot(ha,cst.clon,cst.clat,'w','LineWidth',1) % coastline
-            % NEW CODE HERE TO ADD MERMAID POWER
-
-            % get subset of mermaid points within seasonal window
-            wndstr = CLIM.plotdoy(j)-climwind/2; % NOTE: climwind is set in this script
-            wndend = CLIM.plotdoy(j)+climwind/2;
-            if wndstr<=0 % overflow low
-                didx = find((doy>=wndstr+365)|(doy<=wndend));
-            elseif wndend>=365 % overflow high
-                didx = find((doy>=wndstr)|(doy<=wndend-365));
-            else % normal case
-                didx = find((doy>=wndstr)&(doy<=wndend));
-            end
-            % plot mermaid data points
-            scatter(ha,lon(midx),lat(midx),...
-                'MarkerSize',bandpow(k,midx),'MarkerColor',bandpow(k,midx));
-            
-
-            % set limits and finish up
-            xlim([min(CLIM.LON),max(CLIM.LON)]);
-            ylim([min(CLIM.LAT),max(CLIM.LAT)]);
-            colorbar();
-            %axis equal;
-            bookfonts_TNR(8);
-            title(['DOY: ',num2str(wndctr(didx)),' @',num2str(FRQ(fidx)),'Hz']);
-            clim([cmin,cmax]);
+        %% add mermaid data to plots of seasonality on a map
+        % load coastline
+        cst = load(c_coast);
+        % grabbed code from ww3 climatology
+        hf1 = figure; % new figure
+        hf1.Position = [1 1 1000 500];
+        if makeanim
+            hf2 = figure; % initialize figure
+            hf2.Position = [1 1 1000 500];
         end
+        count = 0; % initialize count
+        for i = 1:length(CLIM.plotfrq)
+            % get target frequency index
+            [~,fidx] = min(abs(CLIM.plotfrq(i)-CLIM.FRQ));
+            % determine cbounds
+            cmin = prctile(CLIM.DOYDAT(:,:,fidx,:),20,"all");
+            cmax = prctile(CLIM.DOYDAT(:,:,fidx,:),95,"all");
+            % set figure
+            set(0,'CurrentFigure',hf1);
+            % loop over plot days to make grid plot
+            for j = 1:length(CLIM.plotdoy)
+                % get target day index
+                [~,didx] = min(abs(CLIM.plotdoy(j)-CLIM.wndctr));
+                % advance count
+                count = count+1;
+                % create subplot
+                ha = subplot(length(CLIM.plotfrq),length(CLIM.plotdoy),count); % make grid of plots
+                % plot power
+                imagesc(ha,CLIM.LON,CLIM.LAT,CLIM.DOYDAT(:,:,fidx,didx)');
+                ha.YDir = 'normal';
+                hold(ha,'on');
+                plot(ha,cst.clon,cst.clat,'w','LineWidth',1) % coastline
+    
+                % get subset of mermaid points within seasonal window
+                wndstr = CLIM.plotdoy(j)-climwind/2; % NOTE: climwind is set in this script
+                wndend = CLIM.plotdoy(j)+climwind/2;
+                if wndstr<=0 % overflow low
+                    didx = find((doy>=wndstr+365)|(doy<=wndend));
+                elseif wndend>=365 % overflow high
+                    didx = find((doy>=wndstr)|(doy<=wndend-365));
+                else % normal case
+                    didx = find((doy>=wndstr)&(doy<=wndend));
+                end
+                % plot mermaid data points
+                scatter(ha,lon(midx),lat(midx),...
+                    'MarkerSize',bandpow(k,midx),'MarkerColor',bandpow(k,midx));
+                
+                % set limits and finish up
+                xlim([min(CLIM.LON),max(CLIM.LON)]);
+                ylim([min(CLIM.LAT),max(CLIM.LAT)]);
+                colorbar();
+                %axis equal;
+                bookfonts_TNR(8);
+                title(['DOY: ',num2str(wndctr(didx)),' @',num2str(FRQ(fidx)),'Hz']);
+                clim([cmin,cmax]);
+            end
+        end
+        savefig([c_dataout,'seasonalpowermapwMERMAID'],hf1.Number,'pdf');
+    
+        %% make seasonality power trend plots by band in power-power space
+        % plot power vs power with color indicating doy (wraparound)
+        % plot 1-1 line
+        % merclim.mean and climctrs
+        % ww3clim.mean and climctrs
+        % CLIM.SPECTDOYDAT(fidx,:) and wndctr
+        error('Stop here')
+        %scatter('MarkerColor',doy)
+    
+    
+        %% compute events in power-time space exceeding Xth percentile
+        % this is similar to ww3 climatology work
+    
+        % for ww3 p2l
+    
+        % for MERMAID
+    
+        % for copernicus average wave height across basin?? (maybe we don't
+        % need this) kiss
+    
+        % compare results
+    
+        % these should probably be binned by month or week or something as counts to compare
     end
-    savefig([c_dataout,'seasonalpowermapwMERMAID'],hf1.Number,'pdf');
-
-    %% make seasonality power trend plots by band in power-power space
-    % plot power vs power with color indicating doy (wraparound)
-    % plot 1-1 line
-    % merclim.mean and climctrs
-    % ww3clim.mean and climctrs
-    % CLIM.SPECTDOYDAT(fidx,:) and wndctr
-    scatter('MarkerColor',doy???)
-
-
-    %% compute events in power-time space exceeding Xth percentile
-    % this is similar to ww3 climatology work
-
-    % for ww3 p2l
-
-    % for MERMAID
-
-    % for copernicus average wave height across basin?? (maybe we don't
-    % need this) kiss
-
-    % compare results
-
-    % these should probably be binned by month or week or something as counts to compare
 
 
     %% compute transfer functions??
