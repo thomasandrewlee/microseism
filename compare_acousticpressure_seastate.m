@@ -63,7 +63,7 @@ bands = [1/0.1; 1/0.2; 1/0.3; 1/0.5];
 %     'VHM0_SW1','VHM0_SW2','VHM0_WW',...
 %     'VMDR_SW1','VMDR_SW2','VMDR_WW',...
 %     'VTM01_SW1','VTM01_SW2','VTM01_WW'};
-cvars = {'VHMO','VHMO_SW1','VHMO_SW2','VHMO_WW'}; % pared down version
+cvars = {'VHM0','VHM0_SW1','VHM0_SW2','VHM0_WW'}; % pared down version
 % climatology params
 % climwind = 28; % in days
 climwind = 61; % in days % 61 is used in ww3climatology
@@ -88,11 +88,18 @@ if useww3
     load([c_MAT_WW3,ftmp(1).name]);
     ww3lat = lat;
     ww3lon = lon;
-    ww3t = t;
     ww3f = f;
     ww3d = D;
+    [tmprow,tmpcol] = size(t);
+    if tmprow == 1
+        ww3t = t'; % t is datenum
+    elseif tmpcol == 1
+        ww3t = t;
+    else
+        error('Dimensions of ''t'' not expected, something wrong!')
+    end
     % loop over the rest of the files
-    for i= 2:length(ftmp)
+    for i = 2:length(ftmp)
         % load file
         load([c_MAT_WW3,ftmp(i).name]);
         % check if interpolation is needed
