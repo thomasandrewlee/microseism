@@ -275,7 +275,7 @@ hf = figure; ha = axes;
 scatter(ha,times,bandpow,'.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
 ha.Title.String = 'Power in Bands for All Buoys';
 legend(ha,num2str(bands));
-savefig([c_output,'bands_w_time'],hf.Number,'pdf');
+savefig([c_output,'bands_w_time'],hf.Number,'png');
 close(hf);
 % make same figure but split up as line plots
 hf = figure;
@@ -284,14 +284,14 @@ for i = 1:Nbands
     scatter(ha,times,bandpow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
     ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for All Buoys'];
 end
-savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
+savefig([c_output,'bands_w_time_split'],hf.Number,'png');
 close(hf);
 if useww3
     hf = figure; ha = axes;
     scatter(ha,times,ww3pow,'.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
     ha.Title.String = 'Power in Bands for WW3';
     legend(ha,num2str(bands));
-    savefig([c_output,'bands_w_time_ww3'],hf.Number,'pdf');
+    savefig([c_output,'bands_w_time_ww3'],hf.Number,'png');
     close(hf);
     % make same figure but split up as line plots
     hf = figure;
@@ -300,7 +300,7 @@ if useww3
         scatter(ha,times,ww3pow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5);
         ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for WW3'];
     end
-    savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
+    savefig([c_output,'bands_w_time_split'],hf.Number,'png');
     close(hf);
 end
 
