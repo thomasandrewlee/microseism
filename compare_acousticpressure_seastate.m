@@ -26,6 +26,10 @@
 %   - NOTE: data from ww3climatology is WHOLE-BASIN data as opposed to
 %       everything else in this code which is either along MERMAID paths or
 %       associated with them
+%
+% last modded: 06/30/2025
+% this update removes the usepts limitation when using WW3 data, things can
+% now be done in bands with interpolation done properly
 
 %% init
 clc
@@ -38,22 +42,32 @@ usr_str = '/Users/tl7869/';
 % data sources
 useww3 = true; % also compare ww3 data
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
-c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_1500/'];
-c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons/data.mat']; % climatology data (precomputed)
-c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_1500/'];
+c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_SEAFLOOR/'];
+c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_SEAFLOOR/data.mat']; % climatology data (precomputed)
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_SEAFLOOR/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
 % c_output = '/Users/thomaslee/Downloads/acoustic_v_surface/';
+% startdate
+sdate = datetime(2021,1,1); % minimum time
+% enddate
+edate = datetime(2025,1,1); % maximum time
 % psd to use
 use50 = false; % otherwise use 95
+% frequency analysis switch
+dofreqanalysis = false;
+% spatial association
+searchsize = 0; % set to 0 for nearest neighbor, otherwise measure in degree of box half-length
+% band treatment
+interpspect = true; % use interpolation instead of nearest neighbor
+usepts = false; % ignore bands use first frequency as instant value (frq)
 % bands (in seconds)
 % bands = [[1:17]' [4:20]']; % col1 = band start (s), col2 = band end (s)
-%bands = [1.5 5; 5 10; 1.5 10];
+bands = [1.5 5; 5 8.5];
 %bands = [9 11; 4 6; 2 4; 1 3]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz
 %bands = [9.5 10.5; 4.5 5.5; 2.5 3.5; 1.5 2.5]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz (1s bands)
-usepts = true; % ignore bands use first frequency as instant value
-bands = [1/0.1; 1/0.2; 1/0.3; 1/0.5];
+%bands = [1/0.1; 1/0.2; 1/0.3; 1/0.5];
 % copernicus vars
 % cvars = {'VCMX','VHM0',...
 %     'VHM0_SW1','VHM0_SW2','VHM0_WW',...
@@ -63,7 +77,7 @@ bands = [1/0.1; 1/0.2; 1/0.3; 1/0.5];
 %     'VHM0_SW1','VHM0_SW2','VHM0_WW',...
 %     'VMDR_SW1','VMDR_SW2','VMDR_WW',...
 %     'VTM01_SW1','VTM01_SW2','VTM01_WW'};
-cvars = {'VHM0','VHM0_SW1','VHM0_SW2','VHM0_WW'}; % pared down version
+cvars = {'VHM0','VHM0_SW1','VHM0_SW2'}; % pared down version
 % climatology params
 % climwind = 28; % in days
 climwind = 61; % in days % 61 is used in ww3climatology
@@ -174,16 +188,18 @@ prd = 1 ./ freq;
 if useww3
     ww3prd = 1 ./ ww3f;
 end
-for i = 1:Nbands
-    if usepts
-        [~,bidx{i}] = min(abs((bands(i,1)-prd)));
-        if useww3
-            [~,ww3bidx{i}] = min(abs((bands(i,1)-ww3prd)));
-        end
-    else
-        bidx{i} = find((bands(i,1)<=prd) & (prd<=bands(i,2)));
-        if useww3
-            ww3bidx{i} = find((bands(i,1)<=ww3prd) & (ww3prd<=bands(i,2)));
+if ~interpspect
+    for i = 1:Nbands
+        if usepts
+            [~,bidx{i}] = min(abs((bands(i,1)-prd)));
+            if useww3
+                [~,ww3bidx{i}] = min(abs((bands(i,1)-ww3prd)));
+            end
+        else
+            bidx{i} = find((bands(i,1)<=prd) & (prd<=bands(i,2)));
+            if useww3
+                ww3bidx{i} = find((bands(i,1)<=ww3prd) & (ww3prd<=bands(i,2)));
+            end
         end
     end
 end
@@ -203,11 +219,22 @@ for i = 1:length(MERDAT)
             times(colnum) = MERDAT(i).dat(j).time(k);
             % get closest ww3 position if in ww3 mode
             if useww3
-                [~ , ww3latidx] = min(abs(ww3lat-lat(colnum)));
-                [~ , ww3lonidx] = min(abs(ww3lon-lon(colnum)));
                 [~ , ww3tidx] = min(abs(ww3t-datenum(times(colnum))));
-                % save spectra
-                ww3spect(:,colnum) = squeeze(ww3d(ww3lonidx,ww3latidx,:,ww3tidx));
+                if searchsize == 0
+                    [~ , ww3latidx] = min(abs(ww3lat-lat(colnum)));
+                    [~ , ww3lonidx] = min(abs(ww3lon-lon(colnum)));
+                    % save spectra
+                    ww3spect(:,colnum) = squeeze(ww3d(ww3lonidx,ww3latidx,:,ww3tidx));
+                else
+                    % find indices in area
+                    ww3latidx = find((ww3lat<=lat(colnum)+searchsize) & (ww3lat>=lat(colnum)-searchsize));
+                    ww3lonidx = find((ww3lon<=lon(colnum)+searchsize) & (ww3lon>=lon(colnum)-searchsize));
+                    % spatial average
+                    dattmp = squeeze(ww3d(ww3lonidx,ww3latidx,:,ww3tidx));
+                    dattmp = squeeze(mean(mean(dattmp,1),2));
+                    % save spectra
+                    ww3spect(:,colnum) = dattmp;
+                end
                 if use50
                     merspect(:,colnum) = MERDAT(i).dat(j).p50(:,k);
                 else
@@ -216,43 +243,77 @@ for i = 1:length(MERDAT)
             end
             % loop over bands to get power
             for l = 1:Nbands
-                % get data
-                if use50
-                    dattmp = MERDAT(i).dat(j).p50(bidx{l},k);
-                else
-                    dattmp = MERDAT(i).dat(j).p95(bidx{l},k);
-                end
-                if usepts
-                    bandpow(l,colnum) = dattmp;
-                    % do it for ww3 if needed
-                    if useww3
-                        % get proper data
-                        dattmp = ww3d(ww3lonidx,ww3latidx,ww3bidx{l},ww3tidx);
-                        dattmp = double(squeeze(dattmp));
-                        % save into variables
-                        ww3pow(l,colnum) = dattmp;
-                    end
-                else
-                    powtmp = 10 .^ (dattmp./10);
-                    % compute integration in band
-                    powsum = trapz(freq(bidx{l}),powtmp);
-                    % convert back to dB
-                    dbsum = 10*log10(powsum);
-                    % save into variables
-                    bandpow(l,colnum) = dbsum;
-                    % do it for ww3 if needed
-                    if useww3
-                        % get proper data
-                        dattmp = ww3d(ww3lonidx,ww3latidx,ww3bidx{l},ww3tidx);
-                        dattmp = double(squeeze(dattmp));
-                        % % convert from dB to power
+                if interpspect
+                    if usepts
+                        % get data
+                        dattmp = interp1(freq,merspect,1/bands(l,1));
+                        bandpow(l,colnum) = dattmp;
+                        % do it for ww3 if needed
+                        if useww3
+                            % save into variables
+                            ww3pow(l,colnum) = interp1(ww3f,ww3spect(:,colnum),1/bands(l,1));
+                        end
+                    else
+                        % get data
+                        btmp = linspace(bands(l,2),bands(l,1),10);
+                        dattmp = interp1(freq,merspect(:,colnum),1./btmp);
                         powtmp = 10 .^ (dattmp./10);
                         % compute integration in band
-                        powsum = trapz(freq(ww3bidx{l}),powtmp);
-                        % convert to dB e=
+                        powsum = trapz(1./btmp,powtmp);
+                        % convert back to dB
                         dbsum = 10*log10(powsum);
                         % save into variables
-                        ww3pow(l,colnum) = dbsum;
+                        bandpow(l,colnum) = dbsum;
+                        % do it for ww3 if needed
+                        if useww3
+                            % get proper data
+                            dattmp = double(ww3spect(:,colnum));
+                            dattmp = interp1(ww3f,dattmp,1./btmp);
+                            % % convert from dB to power
+                            powtmp = 10 .^ (dattmp./10);
+                            % compute integration in band
+                            powsum = trapz(1./btmp,powtmp);
+                            % convert to dB
+                            dbsum = 10*log10(powsum);
+                            % save into variables
+                            ww3pow(l,colnum) = dbsum;
+                        end
+                    end
+                else
+                    % get data
+                    if use50
+                        dattmp = MERDAT(i).dat(j).p50(bidx{l},k);
+                    else
+                        dattmp = MERDAT(i).dat(j).p95(bidx{l},k);
+                    end
+                    if usepts
+                        bandpow(l,colnum) = dattmp;
+                        % do it for ww3 if needed
+                        if useww3
+                            % save into variables
+                            ww3pow(l,colnum) = ww3spect(ww3bidx{l},colnum);
+                        end
+                    else
+                        powtmp = 10 .^ (dattmp./10);
+                        % compute integration in band
+                        powsum = trapz(freq(bidx{l}),powtmp);
+                        % convert back to dB
+                        dbsum = 10*log10(powsum);
+                        % save into variables
+                        bandpow(l,colnum) = dbsum;
+                        % do it for ww3 if needed
+                        if useww3
+                            % get proper data
+                            dattmp = ww3spect(ww3bidx{l},colnum);
+                            % % convert from dB to power
+                            powtmp = 10 .^ (dattmp./10);
+                            % compute integration in band
+                            powsum = trapz(ww3f(ww3bidx{l}),powtmp);
+                            % convert to dB
+                            dbsum = 10*log10(powsum);
+                            % save into variables
+                            ww3pow(l,colnum) = dbsum;
+                        end
                     end
                 end
             end
@@ -262,6 +323,17 @@ for i = 1:length(MERDAT)
             end
         end
     end
+end
+
+%% trim down times (I know this is inefficient, but it is what it is
+tidx = find((times<=edate) & (times>=sdate));
+times = times(tidx); lat = lat(tidx); lon = lon(tidx);
+bandpow = bandpow(:,tidx);
+varofint = varofint(:,tidx);
+merspect = merspect(:,tidx);
+if useww3
+    ww3pow = ww3pow(:,tidx);
+    ww3spect = ww3spect(:,tidx);
 end
 
 %% convert db pow to linpow
@@ -354,7 +426,7 @@ for j = 1:Nbands
     ha = subplot(Nbands,1,j);
     histogram2(ww3pow(j,:),bandpow(j,:),50,'DisplayStyle','tile',...
                 'EdgeColor','none','ShowEmptyBins','on');
-    ha.Title.String = num2str(bands(j,:));
+    ha.Title.String = ['WW3 vs MERMAID @',num2str(bands(j,:)),'s'];
     ha.XLabel.String = 'WW3';
     ha.YLabel.String = 'MERMAID';
 end
@@ -377,22 +449,11 @@ end
 exportgraphics(hf2,[c_output,'ww3_mermaid_trajectory.pdf'],'ContentType','vector','BackgroundColor','none');
 close(hf2);
 
-%% compute fourier trends for the time series (MERMAID) and WW3
-daytime = datenum(times-min(times)); % convert to days since 01/00/0000
-for i = 1:Nbands
-    tmppow = bandpow(i,:) - mean(bandpow(i,:),"omitnan");
-    tmppow(isnan(tmppow)) = 0;
-    [power,f,~] = lomb(tmppow,daytime);
-    hf = figure; ha = axes;
-    plot(ha,1./f,power); 
-    xlim(ha,[0,400]); ha.XScale = 'log';
-    ha.XLabel.String = "Days / Cycle";
-    ha.Title.String = ['Band: ',num2str(bands(i,:))];
-    ha.XMinorGrid = true;
-    savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
-    close(hf);
-    if useww3 % fourier for ww3
-        tmppow = ww3pow(i,:) - mean(ww3pow(i,:),"omitnan");
+if dofreqanalysis
+    %% compute fourier trends for the time series (MERMAID) and WW3
+    daytime = datenum(times-min(times)); % convert to days since 01/00/0000
+    for i = 1:Nbands
+        tmppow = bandpow(i,:) - mean(bandpow(i,:),"omitnan");
         tmppow(isnan(tmppow)) = 0;
         [power,f,~] = lomb(tmppow,daytime);
         hf = figure; ha = axes;
@@ -403,21 +464,34 @@ for i = 1:Nbands
         ha.XMinorGrid = true;
         savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
         close(hf);
+        if useww3 % fourier for ww3
+            tmppow = ww3pow(i,:) - mean(ww3pow(i,:),"omitnan");
+            tmppow(isnan(tmppow)) = 0;
+            [power,f,~] = lomb(tmppow,daytime);
+            hf = figure; ha = axes;
+            plot(ha,1./f,power); 
+            xlim(ha,[0,400]); ha.XScale = 'log';
+            ha.XLabel.String = "Days / Cycle";
+            ha.Title.String = ['Band: ',num2str(bands(i,:))];
+            ha.XMinorGrid = true;
+            savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
+            close(hf);
+        end
     end
-end
-% compute fourier trends for the time series (COPERNICUS)
-for i = 1:length(cvars)
-    tmppow = varofint(i,:) - mean(varofint(i,:),"omitnan");
-    tmppow(isnan(tmppow)) = 0;
-    [power,f,~] = lomb(tmppow,daytime);
-    hf = figure; ha = axes;
-    plot(ha,1./f,power); 
-    xlim(ha,[0,400]); ha.XScale = 'log';
-    ha.XLabel.String = "Days / Cycle";
-    ha.Title.String = cvarslab{i};
-    ha.XMinorGrid = true;
-    savefig([c_output,'Spectra_',cvars{i}],hf.Number,'pdf')
-    close(hf);
+    % compute fourier trends for the time series (COPERNICUS)
+    for i = 1:length(cvars)
+        tmppow = varofint(i,:) - mean(varofint(i,:),"omitnan");
+        tmppow(isnan(tmppow)) = 0;
+        [power,f,~] = lomb(tmppow,daytime);
+        hf = figure; ha = axes;
+        plot(ha,1./f,power); 
+        xlim(ha,[0,400]); ha.XScale = 'log';
+        ha.XLabel.String = "Days / Cycle";
+        ha.Title.String = cvarslab{i};
+        ha.XMinorGrid = true;
+        savefig([c_output,'Spectra_',cvars{i}],hf.Number,'pdf')
+        close(hf);
+    end
 end
 
 %% compute spectral transfer functions from ww3 to MERMAID
@@ -445,7 +519,41 @@ if useww3
     savefig([c_output,'MedSpects'],hf.Number,'pdf')
     close(hf);
 
-    %% compute seasonality / climatology
+    %% compute the period vs period plot
+    % get period with time data
+    [ww3peak, ww3peaki] = max(ww3spect,[],1);
+    ww3peakf = ww3f(ww3peaki);
+    [merpeak, merpeaki] = max(merspect,[],1);
+    merpeakf = freq(merpeaki);
+
+    % make 2D histogram in previous style
+    hf = figure; ha = axes;
+    scatter(ha,1./ww3peakf,1./merpeakf,'ko','filled','MarkerFaceAlpha',0.25)
+    title('Peak Period of WW3 vs MERMAID');
+    ha.XScale = "log"; ha.YScale = "log";
+    xlabel('MERMAID'); ylabel('WW3');
+    ha.FontSize = 12; ha.Box = true;
+    savefig([c_output,'peakperiodcomparison'],hf.Number,'png')
+    title('Linear Peak Period of WW3 vs MERMAID');
+    ha.XScale = "linear"; ha.YScale = "linear";
+    ha.FontSize = 12; ha.Box = true;
+    savefig([c_output,'peakperiodcomparison_lin'],hf.Number,'png')
+    clf(hf);
+    % make as 2d histogram
+    ha = axes;
+    histogram2(ha,1./ww3peakf,1./merpeakf,100,'DisplayStyle','tile',...
+            'EdgeColor','none','ShowEmptyBins','on');
+    xlim([ha.XLim(1),10]); ylim([ha.YLim(1),10]);
+    ha.XScale = "log"; ha.YScale = "log";
+    ha.XTick = ceil(ha.XLim(1)):10;
+    ha.YTick = ceil(ha.YLim(1)):10;
+    xlabel('MERMAID'); ylabel('WW3');
+    colorbar(); ha.FontSize = 12;
+    title('Peak Period of WW3 vs MERMAID');
+    savefig([c_output,'peakperiodcomparison_heatmap'],hf.Number,'pdf')
+    close(hf);
+
+    %% compute seasonality / climatology as spectrograms
     % set centers
     climctrs = 0:climstep:365;
     % intialize
@@ -454,11 +562,13 @@ if useww3
     ww3clim.p95 = nan(length(ww3f),length(climctrs));
     ww3clim.mean = nan(length(ww3f),length(climctrs));
     ww3clim.std = nan(length(ww3f),length(climctrs));
+    ww3clim.bandpow = nan(Nbands,length(climctrs));
     merclim.median = nan(length(freq),length(climctrs));
     merclim.p5 = nan(length(freq),length(climctrs)); 
     merclim.p95 = nan(length(freq),length(climctrs));
     merclim.mean = nan(length(freq),length(climctrs)); 
     merclim.std = nan(length(freq),length(climctrs));
+    merclim.bandpow = nan(Nbands,length(climctrs));
     for i = 1:length(climctrs)
         % get endpoints
         doy0 = climctrs(i) - climwind/2; % start day
@@ -485,6 +595,65 @@ if useww3
         merclim.p95(:,i) = prctile(merspect(:,doyidx),95,2);
         merclim.mean(:,i) = mean(merspect(:,doyidx),2,"omitnan");
         merclim.std(:,i) = std(merspect(:,doyidx),0,2,"omitnan");
+        % do integration if necessary (based on integration from previous)
+        for l = 1:Nbands
+            if interpspect
+                if usepts
+                    % get data
+                    merclim.bandpow(l,i) = interp1(freq,merclim.mean(:,i),1/bands(l,1));
+                    % do it for ww3
+                    ww3clim.bandpow(l,i) = interp1(ww3f,ww3clim.mean(:,i),1/bands(l,1));
+                else
+                    % get data
+                    btmp = linspace(bands(l,2),bands(l,1),10);
+                    dattmp = interp1(freq,merclim.mean(:,i),1./btmp);
+                    powtmp = 10 .^ (dattmp./10);
+                    % compute integration in band
+                    powsum = trapz(1./btmp,powtmp);
+                    % convert back to dB
+                    dbsum = 10*log10(powsum);
+                    % save into variables
+                    merclim.bandpow(l,i) = dbsum;
+                    % do it for ww3
+                    dattmp = interp1(ww3f,ww3clim.mean(:,i),1./btmp);
+                    % % convert from dB to power
+                    powtmp = 10 .^ (dattmp./10);
+                    % compute integration in band
+                    powsum = trapz(1./btmp,powtmp);
+                    % convert to dB
+                    dbsum = 10*log10(powsum);
+                    % save into variables
+                    ww3clim.bandpow(l,i) = dbsum;
+                end
+            else
+                if usepts
+                    % do mermaid version
+                    [~,fidx] = min(abs(freq-1/bands(l,1)));
+                    merclim.bandpow(l,i) = merclim.mean(:,fidx);
+                    % do it for ww3
+                    [~,fidx] = min(abs(ww3f-1/bands(l,1)));
+                    ww3clim.bandpow(l,i) = ww3clim.mean(:,fidx);
+                else
+                    bidx = find((1./freq >= bands(l,1)) & (1./freq <= bands(l,2)));
+                    powtmp = 10 .^ (merclim.mean(:,bidx)./10);
+                    % compute integration in band
+                    powsum = trapz(freq(bidx),powtmp);
+                    % convert back to dB
+                    dbsum = 10*log10(powsum);
+                    % save into variables
+                    merclim.bandpow(l,i) = dbsum;
+                    % do it for ww3
+                    bidx = find((1./ww3f >= bands(l,1)) & (1./ww3f <= bands(l,2)));
+                    powtmp = 10 .^ (ww3clim.mean(:,bidx)./10);
+                    % compute integration in band
+                    powsum = trapz(ww3f(bidx),powtmp);
+                    % convert to dB
+                    dbsum = 10*log10(powsum);
+                    % save into variables
+                    ww3clim.bandpow(l,i) = dbsum;
+                end
+            end
+        end
     end
     % make seasonality plots for ww3
     hf = figure;
@@ -559,94 +728,143 @@ if useww3
     savefig([c_output,'mermaid_seasonality_mean'],hf.Number,'pdf')
     close(hf);
 
+    %% plot the seasonality comparison in bands
+    % initialize band array
+ 
+
+    % plot as function of doy
+
+    % plot as function of power with color as doy
+
     %% read in the data from climatology
     CLIM = load(c_MAT_WW3CLIM);
-    % check if CLIM.plotfrq is the same as Nbands
-    if length(Nbands)==plotfrq
 
-        %% add mermaid data to plots of seasonality on a map
-        % load coastline
-        cst = load(c_coast);
-        % grabbed code from ww3 climatology
-        hf1 = figure; % new figure
-        hf1.Position = [1 1 1000 500];
-        if makeanim
-            hf2 = figure; % initialize figure
-            hf2.Position = [1 1 1000 500];
-        end
-        count = 0; % initialize count
-        for i = 1:length(CLIM.plotfrq)
-            % get target frequency index
-            [~,fidx] = min(abs(CLIM.plotfrq(i)-CLIM.FRQ));
-            % determine cbounds
-            cmin = prctile(CLIM.DOYDAT(:,:,fidx,:),20,"all");
-            cmax = prctile(CLIM.DOYDAT(:,:,fidx,:),95,"all");
-            % set figure
-            set(0,'CurrentFigure',hf1);
-            % loop over plot days to make grid plot
-            for j = 1:length(CLIM.plotdoy)
-                % get target day index
-                [~,didx] = min(abs(CLIM.plotdoy(j)-CLIM.wndctr));
-                % advance count
-                count = count+1;
-                % create subplot
-                ha = subplot(length(CLIM.plotfrq),length(CLIM.plotdoy),count); % make grid of plots
-                % plot power
-                imagesc(ha,CLIM.LON,CLIM.LAT,CLIM.DOYDAT(:,:,fidx,didx)');
-                ha.YDir = 'normal';
-                hold(ha,'on');
-                plot(ha,cst.clon,cst.clat,'w','LineWidth',1) % coastline
-    
-                % get subset of mermaid points within seasonal window
-                wndstr = CLIM.plotdoy(j)-climwind/2; % NOTE: climwind is set in this script
-                wndend = CLIM.plotdoy(j)+climwind/2;
-                if wndstr<=0 % overflow low
-                    didx = find((doy>=wndstr+365)|(doy<=wndend));
-                elseif wndend>=365 % overflow high
-                    didx = find((doy>=wndstr)|(doy<=wndend-365));
-                else % normal case
-                    didx = find((doy>=wndstr)&(doy<=wndend));
+    %% add mermaid data to plots of seasonality on a map
+    % load coastline
+    cst = load(c_coast);
+    % grabbed code from ww3 climatology
+    hf1 = figure; % new figure
+    hf1.Position = [1 1 1000 500];
+    count = 0; % initialize count
+    for i = 1:length(Nbands)
+        % set figure
+        set(0,'CurrentFigure',hf1);
+        % loop over plot days to make grid plot
+        for j = 1:length(CLIM.plotdoy)
+            % get target day index
+            [~,didx] = min(abs(CLIM.plotdoy(j)-CLIM.wndctr));
+            if interpspect
+                if usepts
+                    for lonitmp = 1:length(CLIM.LON)
+                        for latitmp = 1:length(CLIM.LAT)
+                            ww3climbands(lonitmp,latitmp,j) = interp1(...
+                                CLIM.FRQ,squeeze(CLIM.DOYDAT(lonitmp,latitmp,:,didx)),...
+                                1/bands(i,1));
+                        end
+                    end
+                else
+                    btmp = linspace(bands(i,2),bands(i,1),10);
+                    for lonitmp = 1:length(CLIM.LON)
+                        for latitmp = 1:length(CLIM.LAT)
+                            dattmp = interp1(...
+                                CLIM.FRQ,squeeze(CLIM.DOYDAT(lonitmp,latitmp,:,didx)),...
+                                1./btmp);
+                            % convert from dB to power
+                            powtmp = 10 .^ (double(dattmp)./10);
+                            % compute integration in band
+                            powsum = trapz(1./btmp,powtmp);
+                            % convert to dB
+                            ww3climbands(lonitmp,latitmp,j) = 10*log10(powsum);
+                        end
+                    end       
                 end
-                % plot mermaid data points
-                scatter(ha,lon(midx),lat(midx),...
-                    'MarkerSize',bandpow(k,midx),'MarkerColor',bandpow(k,midx));
-                
-                % set limits and finish up
-                xlim([min(CLIM.LON),max(CLIM.LON)]);
-                ylim([min(CLIM.LAT),max(CLIM.LAT)]);
-                colorbar();
-                %axis equal;
-                bookfonts_TNR(8);
-                title(['DOY: ',num2str(wndctr(didx)),' @',num2str(FRQ(fidx)),'Hz']);
-                clim([cmin,cmax]);
+            else
+                 % get target frequency index and data
+                if usepts
+                    [~,fidx] = min(abs(1/bands(i,1)-CLIM.FRQ));
+                    ww3climbands(:,:,j) = squeeze(CLIM.DOYDAT(:,:,fidx,didx));
+                else
+                    fidx = find((bands(i,1)<=1./CLIM.FRQ) & (1./CLIM.FRQ<=bands(i,2)));
+                    % get data
+                    dattmp = CLIM.DOYDAT(:,:,fidx,didx);
+                    dattmp = double(squeeze(dattmp));
+                    % % convert from dB to power
+                    powtmp = 10 .^ (dattmp./10);
+                    % compute integration in band
+                    powsum = trapz(1./CLIM.FRQ(fidx),powtmp);
+                    % convert to dB
+                    ww3climbands(:,:,j) = 10*log10(powsum);
+                end
             end
         end
-        savefig([c_dataout,'seasonalpowermapwMERMAID'],hf1.Number,'pdf');
-    
-        %% make seasonality power trend plots by band in power-power space
-        % plot power vs power with color indicating doy (wraparound)
-        % plot 1-1 line
-        % merclim.mean and climctrs
-        % ww3clim.mean and climctrs
-        % CLIM.SPECTDOYDAT(fidx,:) and wndctr
-        error('Stop here')
-        %scatter('MarkerColor',doy)
-    
-    
-        %% compute events in power-time space exceeding Xth percentile
-        % this is similar to ww3 climatology work
-    
-        % for ww3 p2l
-    
-        % for MERMAID
-    
-        % for copernicus average wave height across basin?? (maybe we don't
-        % need this) kiss
-    
-        % compare results
-    
-        % these should probably be binned by month or week or something as counts to compare
+        % determine cbounds (needs to get out of loop to do this)
+        cmin = prctile(ww3climbands,20,"all");
+        cmax = prctile(ww3climbands,95,"all");
+
+        % loop again over doy for plots
+        for j = 1:length(CLIM.plotdoy)
+            % get target day index
+            [~,didx] = min(abs(CLIM.plotdoy(j)-CLIM.wndctr));
+            % advance count
+            count = count+1;
+
+            % create subplot
+            ha = subplot(length(CLIM.plotfrq),length(CLIM.plotdoy),count); % make grid of plots
+            % plot power
+            imagesc(ha,CLIM.LON,CLIM.LAT,ww3climbands(:,:,j)');
+            ha.YDir = 'normal';
+            hold(ha,'on');
+            plot(ha,cst.lon,cst.lat,'w','LineWidth',1) % coastline
+
+            % get subset of mermaid points within seasonal window
+            wndstr = CLIM.plotdoy(j)-climwind/2; % NOTE: climwind is set in this script
+            wndend = CLIM.plotdoy(j)+climwind/2;
+            if wndstr<=0 % overflow low
+                didx = find((doy>=wndstr+365)|(doy<=wndend));
+            elseif wndend>=365 % overflow high
+                didx = find((doy>=wndstr)|(doy<=wndend-365));
+            else % normal case
+                didx = find((doy>=wndstr)&(doy<=wndend));
+            end
+            % plot mermaid data points
+            scatter(ha,lon(didx),lat(didx),...
+                'MarkerSize',bandpow(k,didx),'MarkerColor',bandpow(k,didx));
+            
+            % set limits and finish up
+            xlim([min(CLIM.LON),max(CLIM.LON)]);
+            ylim([min(CLIM.LAT),max(CLIM.LAT)]);
+            colorbar();
+            %axis equal;
+            bookfonts_TNR(8);
+            title(['DOY: ',num2str(wndctr(didx)),' @',num2str(FRQ(fidx)),'Hz']);
+            clim([cmin,cmax]);
+        end
     end
+    savefig([c_dataout,'seasonalpowermapwMERMAID'],hf1.Number,'pdf');
+
+    %% make seasonality power trend plots by band in power-power space
+    % plot power vs power with color indicating doy (wraparound)
+    % plot 1-1 line
+    % merclim.mean and climctrs
+    % ww3clim.mean and climctrs
+    % CLIM.SPECTDOYDAT(fidx,:) and wndctr
+    error('Stop here')
+    %scatter('MarkerColor',doy)
+
+
+    %% compute events in power-time space exceeding Xth percentile
+    % this is similar to ww3 climatology work
+
+    % for ww3 p2l
+
+    % for MERMAID
+
+    % for copernicus average wave height across basin?? (maybe we don't
+    % need this) kiss
+
+    % compare results
+
+    % these should probably be binned by month or week or something as counts to compare
 
 
     %% compute transfer functions??
