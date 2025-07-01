@@ -1275,12 +1275,13 @@ if useww3
     ha.YTickLabels = allstr;
     ha.XTickLabels = allstr;
     ha.XTickLabelRotation = 90;
+    clim([0,1]);
     colorbar();
     title('Fraction of Peak Microseism Days in X also in Y');
     bookfonts_TNR(14);
     savefig([c_output,'intersect_frac_matrix'],gcf().Number,'pdf');
 
-    % look at overall numbers
+    % look at counts
     figure;  ha = axes;
     allcts = cellfun(@length,alldays);
     bar(allcts);
@@ -1294,11 +1295,62 @@ if useww3
     % find fourier trends of peaks???
 
     %% get correlation of season removed data
+    % make X matrix for getting correlation
+    X = nan(Nbands*3,length(times));
+    count = 0;
+    for j = 1:3
+        for i = 1:Nbands
+            count = count+1;
+            % get data
+            if j==1 % mer
+                X(count,:) = bandpow(i,:);
+            elseif j==2 % ww3
+                X(count,:) = ww3pow(i,:);
+            elseif j==3 % ww3 all
+                X(count,:) = ww3allbp(i,:);
+            else
+                error('''j'' indexing is off!')
+            end
+        end
+    end
+    gidx = find(sum(~isnan(X),1)==6);
+    corrmat = corr(X(:,gidx)');
+    % plot 
+    figure; ha = axes;
+    imagesc(corrmat);
+    ha.YDir = 'normal';
+    ha.YTickLabels = allstr;
+    ha.XTickLabels = allstr;
+    ha.XTickLabelRotation = 90;
+    clim([0,1]);
+    colorbar();
+    title('Correlation Matrix');
+    bookfonts_TNR(14);
+    savefig([c_output,'corr_matrix'],gcf().Number,'pdf');
     % this should be a 6x6 matrix (2 bands and 3 types, more if more bands)
 
 
     %% compute transfer functions??
-    
+    % use the average spectras and divide to get the transfer function
+    % interpolate if necessary on where we have both
+    txfrF = linspace(max([min(ww3f),min(freq)]),...
+        min([max(ww3f),max(freq)]),1000);
+    merint = interp1(freq,mean(merspect,2,"omitnan"),txfrF,'pchip');
+    ww3int = interp1(ww3f,mean(ww3spect,2,"omitnan"),txfrF,'pchip');
+    txfrD = (10.^(merint/10))./(10.^(ww3int/10));
+    % plot the txfr
+    figure; ha=axes;
+    plot(1./txfrF,txfrD,'k');
+    ha.YScale = 'log';
+    ha.YMinorTick = true; ha.YMinorGrid = true;
+    xlabel('Period (s)'); ylabel('Transfer (Pa^2/Hz)/(Pa^2/Hz)');
+    title('MER/WW3 Transfer (not in dB)');
+    warning('Remember the transfer function is not in dB!!!!');
+    bookfonts_TNR(14);
+    savefig([c_output,'transfer'],gcf().Number,'pdf');
+
+    % save the txfr
+    save([c_output,'txfr.mat'],'txfrF','txfrD');
 
     % look at seasonality of transfers??
 
