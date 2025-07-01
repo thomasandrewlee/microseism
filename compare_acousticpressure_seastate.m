@@ -82,6 +82,8 @@ cvars = {'VHM0','VHM0_SW1','VHM0_SW2'}; % pared down version
 % climwind = 28; % in days
 climwind = 61; % in days % 61 is used in ww3climatology
 climstep = 1; % in days
+% percentile for peak events
+prctthresh = 90; % percentile
 
 % setupdir
 if ~isfolder(c_output)
@@ -728,13 +730,69 @@ if useww3
     savefig([c_output,'mermaid_seasonality_mean'],hf.Number,'pdf')
     close(hf);
 
-    %% plot the seasonality comparison in bands
-    % initialize band array
- 
-
+    %% plot the seasonality comparison in bands between mermaid and associated ww3
+    % initialize 
+    hf = figure; hf.Position = [1 1 1200 500];
     % plot as function of doy
+    ha = subplot(1,2,1);     
+    hold(ha,'on');
+    for i = 1:Nbands
+        hp1 = plot(climctrs,merclim.bandpow(i,:),'-','LineWidth',2);    
+        hp2 = plot(climctrs,ww3clim.bandpow(i,:),':','LineWidth',3);
+        legstr{2*i-1} = ['MER: ',num2str(bands(i,:))];
+        legstr{2*i} = ['WW3: ',num2str(bands(i,:))];
+    end
+    legend(legstr,'Location','southeast');
+    title('Seasonality');
+    xlabel('DOY'); ylabel('dB');
+    ha.Box = true; bookfonts_TNR(16);
 
     % plot as function of power with color as doy
+    ha = subplot(1,2,2);
+    hold(ha,'on');
+    for i = 1:Nbands
+        scatter(ha,merclim.bandpow(i,:),ww3clim.bandpow(i,:),14,climctrs,"filled");
+    end
+    colormap(ph);
+    colorbar();
+    legend(ha,num2str(bands),'Location','southeast');
+    xlabel('MERMAID'); ylabel('WW3');
+    title('Seasonal Power vs Power');
+    ha.Box = true; bookfonts_TNR(16);
+    % save
+    savefig([c_output,'MERvsWW3_doy'],hf.Number,'pdf');
+    close(hf); clear legstr
+
+    % again, but with separate bands
+    hf = figure; hf.Position = [1 1 1200 450*Nbands];
+    % loop over bands
+    for i = 1:Nbands
+        % plot as function of doy
+        ha = subplot(Nbands,2,2*i-1);     
+        hold(ha,'on');
+        hp1 = plot(climctrs,merclim.bandpow(i,:),'-','LineWidth',2);    
+        hp2 = plot(climctrs,ww3clim.bandpow(i,:),':','LineWidth',3);
+        legstr{1} = ['MER: ',num2str(bands(i,:))];
+        legstr{2} = ['WW3: ',num2str(bands(i,:))];
+        legend(legstr,'Location','southeast');
+        title('Seasonality');
+        xlabel('DOY'); ylabel('dB');
+        ha.Box = true; bookfonts_TNR(16);
+    
+        % plot as function of power with color as doy
+        ha = subplot(Nbands,2,2*i);
+        hold(ha,'on');
+        scatter(ha,merclim.bandpow(i,:),ww3clim.bandpow(i,:),14,climctrs,"filled");
+        colormap(ph);
+        colorbar();
+        legend(ha,num2str(bands(i,:)),'Location','southeast');
+        xlabel('MERMAID'); ylabel('WW3');
+        title('Seasonal Power vs Power');
+        ha.Box = true; bookfonts_TNR(16);
+    end
+    % save
+    savefig([c_output,'MERvsWW3_doy_separatebands'],hf.Number,'pdf');
+    close(hf);
 
     %% read in the data from climatology
     CLIM = load(c_MAT_WW3CLIM);
@@ -744,9 +802,9 @@ if useww3
     cst = load(c_coast);
     % grabbed code from ww3 climatology
     hf1 = figure; % new figure
-    hf1.Position = [1 1 1000 500];
+    hf1.Position = [1 1 350*length(CLIM.plotdoy) 250*Nbands];
     count = 0; % initialize count
-    for i = 1:length(Nbands)
+    for i = 1:Nbands
         % set figure
         set(0,'CurrentFigure',hf1);
         % loop over plot days to make grid plot
@@ -791,25 +849,23 @@ if useww3
                     % % convert from dB to power
                     powtmp = 10 .^ (dattmp./10);
                     % compute integration in band
-                    powsum = trapz(1./CLIM.FRQ(fidx),powtmp);
+                    powsum = trapz(CLIM.FRQ(fidx),powtmp);
                     % convert to dB
                     ww3climbands(:,:,j) = 10*log10(powsum);
                 end
             end
         end
         % determine cbounds (needs to get out of loop to do this)
-        cmin = prctile(ww3climbands,20,"all");
-        cmax = prctile(ww3climbands,95,"all");
+        cmin = min([prctile(ww3climbands,20,"all"),prctile(bandpow(i,:),5,"all")]);
+        cmax = max([prctile(ww3climbands,95,"all"),prctile(bandpow(i,:),95,"all")]);
 
         % loop again over doy for plots
         for j = 1:length(CLIM.plotdoy)
-            % get target day index
-            [~,didx] = min(abs(CLIM.plotdoy(j)-CLIM.wndctr));
             % advance count
             count = count+1;
 
             % create subplot
-            ha = subplot(length(CLIM.plotfrq),length(CLIM.plotdoy),count); % make grid of plots
+            ha = subplot(Nbands,length(CLIM.plotdoy),count); % make grid of plots
             % plot power
             imagesc(ha,CLIM.LON,CLIM.LAT,ww3climbands(:,:,j)');
             ha.YDir = 'normal';
@@ -827,8 +883,12 @@ if useww3
                 didx = find((doy>=wndstr)&(doy<=wndend));
             end
             % plot mermaid data points
+            msize = 30;
+            sizetmp = bandpow(i,didx);
+            sizetmp = sizetmp-min(sizetmp);
+            sizetmp = msize*sizetmp/max(sizetmp)+1;
             scatter(ha,lon(didx),lat(didx),...
-                'MarkerSize',bandpow(k,didx),'MarkerColor',bandpow(k,didx));
+                sizetmp,bandpow(i,didx)','filled');
             
             % set limits and finish up
             xlim([min(CLIM.LON),max(CLIM.LON)]);
@@ -836,35 +896,405 @@ if useww3
             colorbar();
             %axis equal;
             bookfonts_TNR(8);
-            title(['DOY: ',num2str(wndctr(didx)),' @',num2str(FRQ(fidx)),'Hz']);
+            if usepts
+                title(['DOY: ',num2str(CLIM.plotdoy(j)),' @',num2str(1/bands(i,1)),'Hz']);
+            else
+                title(['DOY: ',num2str(CLIM.plotdoy(j)),' @',...
+                    num2str(1/bands(i,2)),'-',num2str(1/bands(i,1)),'Hz']);
+            end
             clim([cmin,cmax]);
         end
     end
-    savefig([c_dataout,'seasonalpowermapwMERMAID'],hf1.Number,'pdf');
+    savefig([c_output,'seasonalpowermapwMERMAID'],hf1.Number,'pdf');
 
-    %% make seasonality power trend plots by band in power-power space
-    % plot power vs power with color indicating doy (wraparound)
-    % plot 1-1 line
-    % merclim.mean and climctrs
-    % ww3clim.mean and climctrs
-    % CLIM.SPECTDOYDAT(fidx,:) and wndctr
-    error('Stop here')
-    %scatter('MarkerColor',doy)
+    %% get whole-basin ww3 bandpower by doy
+    ww3allbpdoy = nan(Nbands,length(climctrs));
+    for i = 1:length(climctrs)
+        [~,didx] = min(abs(climctrs(i)-CLIM.wndctr));
+        for j = 1:Nbands
+            if interpspect
+                if usepts
+                    dattmp = CLIM.SPECTDOYDAT(:,didx);
+                    ww3allbpdoy(j,i) = interp1(CLIM.FRQ,dattmp,1/bands(j,1));
+                else
+                    btmp = linspace(bands(j,2),bands(j,1),10);
+                    dattmp = CLIM.SPECTDOYDAT(:,didx);
+                    dattmp = interp1(CLIM.FRQ,dattmp,1./btmp);
+                    % convert from dB to power
+                    powtmp = 10 .^ (double(dattmp)./10);
+                    % compute integration in band
+                    powsum = trapz(1./btmp,powtmp);
+                    % convert to dB
+                    ww3allbpdoy(j,i) = 10*log10(powsum);                            
+                end
+            else
+                 % get target frequency index and data
+                if usepts
+                    [~,fidx] = min(abs(1/bands(j,1)-CLIM.FRQ));
+                    ww3allbpdoy(j,i) =  CLIM.SPECTDOYDAT(fidx,didx);
+                else                   
+                    fidx = find((bands(j,1)<=1./CLIM.FRQ) & (1./CLIM.FRQ<=bands(j,2)));
+                    dattmp = CLIM.SPECTDOYDAT(fidx,didx);
+                    % convert from dB to power
+                    powtmp = 10 .^ (double(dattmp)./10);
+                    % compute integration in band
+                    powsum = trapz(CLIM.FRQ,powtmp);
+                    % convert to dB
+                    ww3allbpdoy(j,i) = 10*log10(powsum);  
+                end
+            end
+        end
+    end
+
+    %% plot the seasonality comparison in bands between whole basin ww3 and associated ww3
+    % initialize 
+    hf = figure; hf.Position = [1 1 1200 500];
+    % plot as function of doy
+    ha = subplot(1,2,1);     
+    hold(ha,'on');
+    for i = 1:Nbands
+        hp1 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);    
+        hp2 = plot(climctrs,ww3clim.bandpow(i,:),':','LineWidth',3);
+        legstr{2*i-1} = ['WW3 All: ',num2str(bands(i,:))];
+        legstr{2*i} = ['WW3 Asc: ',num2str(bands(i,:))];
+    end
+    legend(legstr,'Location','southeast');
+    title('Seasonality');
+    xlabel('DOY'); ylabel('dB');
+    ha.Box = true; bookfonts_TNR(16);
+
+    % plot as function of power with color as doy
+    ha = subplot(1,2,2);
+    hold(ha,'on');
+    for i = 1:Nbands
+        scatter(ha,ww3allbpdoy(i,:),ww3clim.bandpow(i,:),14,climctrs,"filled");
+    end
+    colormap(ph);
+    colorbar();
+    legend(ha,num2str(bands),'Location','southeast');
+    xlabel('WW3 All'); ylabel('WW3 Associated');
+    title('Seasonal Power vs Power');
+    ha.Box = true; bookfonts_TNR(16);
+    % save
+    savefig([c_output,'WW3AllvsWW3_doy'],hf.Number,'pdf');
+    close(hf); clear legstr
+
+    % again, but with separate bands
+    hf = figure; hf.Position = [1 1 1200 450*Nbands];
+    % loop over bands
+    for i = 1:Nbands
+        % plot as function of doy
+        ha = subplot(Nbands,2,2*i-1);     
+        hold(ha,'on');
+        hp1 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);    
+        hp2 = plot(climctrs,ww3clim.bandpow(i,:),':','LineWidth',3);
+        legstr{1} = ['WW3 All: ',num2str(bands(i,:))];
+        legstr{2} = ['WW3 Asc: ',num2str(bands(i,:))];
+        legend(legstr,'Location','southeast');
+        title('Seasonality');
+        xlabel('DOY'); ylabel('dB');
+        ha.Box = true; bookfonts_TNR(16);
+    
+        % plot as function of power with color as doy
+        ha = subplot(Nbands,2,2*i);
+        hold(ha,'on');
+        scatter(ha,ww3allbpdoy(i,:),ww3clim.bandpow(i,:),14,climctrs,"filled");
+        colormap(ph);
+        colorbar();
+        legend(ha,num2str(bands(i,:)),'Location','southeast');
+        xlabel('WW3 All'); ylabel('WW3 Associated');
+        title('Seasonal Power vs Power');
+        ha.Box = true; bookfonts_TNR(16);
+    end
+    % save
+    savefig([c_output,'WW3AllvsWW3_doy_separatebands'],hf.Number,'pdf');
+    close(hf);
+
+    %% plot the seasonality comparison in bands between mermaid and whole basin ww3
+    % initialize 
+    hf = figure; hf.Position = [1 1 1200 500];
+    % plot as function of doy
+    ha = subplot(1,2,1);     
+    hold(ha,'on');
+    for i = 1:Nbands
+        hp1 = plot(climctrs,merclim.bandpow(i,:),'-','LineWidth',2);    
+        hp2 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);
+        legstr{2*i-1} = ['MER: ',num2str(bands(i,:))];
+        legstr{2*i} = ['WW3 All: ',num2str(bands(i,:))];
+    end
+    legend(legstr,'Location','southeast');
+    title('Seasonality');
+    xlabel('DOY'); ylabel('dB');
+    ha.Box = true; bookfonts_TNR(16);
+
+    % plot as function of power with color as doy
+    ha = subplot(1,2,2);
+    hold(ha,'on');
+    for i = 1:Nbands
+        scatter(ha,merclim.bandpow(i,:),ww3allbpdoy(i,:),14,climctrs,"filled");
+    end
+    colormap(ph);
+    colorbar();
+    legend(ha,num2str(bands),'Location','southeast');
+    xlabel('MERMAID'); ylabel('WW3 All');
+    title('Seasonal Power vs Power');
+    ha.Box = true; bookfonts_TNR(16);
+    % save
+    savefig([c_output,'MERvsWW3All_doy'],hf.Number,'pdf');
+    close(hf); clear legstr
+
+    % again, but with separate bands
+    hf = figure; hf.Position = [1 1 1200 450*Nbands];
+    % loop over bands
+    for i = 1:Nbands
+        % plot as function of doy
+        ha = subplot(Nbands,2,2*i-1);     
+        hold(ha,'on');
+        hp1 = plot(climctrs,merclim.bandpow(i,:),'-','LineWidth',2);    
+        hp2 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);
+        legstr{1} = ['MER: ',num2str(bands(i,:))];
+        legstr{2} = ['WW3 All: ',num2str(bands(i,:))];
+        legend(legstr,'Location','southeast');
+        title('Seasonality');
+        xlabel('DOY'); ylabel('dB');
+        ha.Box = true; bookfonts_TNR(16);
+    
+        % plot as function of power with color as doy
+        ha = subplot(Nbands,2,2*i);
+        hold(ha,'on');
+        scatter(ha,merclim.bandpow(i,:),ww3allbpdoy(i,:),14,climctrs,"filled");
+        colormap(ph);
+        colorbar();
+        legend(ha,num2str(bands(i,:)),'Location','southeast');
+        xlabel('MERMAID'); ylabel('WW3 All');
+        title('Seasonal Power vs Power');
+        ha.Box = true; bookfonts_TNR(16);
+    end
+    % save
+    savefig([c_output,'MERvsWW3All_doy_separatebands'],hf.Number,'pdf');
+    close(hf);
+
+    %% get whole-basin ww3 bandpower by time
+    ww3allbp = nan(Nbands,length(times));
+    for i = 1:length(times)
+        [~,didx] = min(abs(times(i)-CLIM.TME));
+        for j = 1:Nbands
+            if interpspect
+                if usepts
+                    dattmp = CLIM.SPECTDAT(:,didx);
+                    ww3allbp(j,i) = interp1(CLIM.FRQ,dattmp,1/bands(j,1));
+                else
+                    btmp = linspace(bands(j,2),bands(j,1),10);
+                    dattmp = CLIM.SPECTDAT(:,didx);
+                    dattmp = interp1(CLIM.FRQ,dattmp,1./btmp);
+                    % convert from dB to power
+                    powtmp = 10 .^ (double(dattmp)./10);
+                    % compute integration in band
+                    powsum = trapz(1./btmp,powtmp);
+                    % convert to dB
+                    ww3allbp(j,i) = 10*log10(powsum);                            
+                end
+            else
+                 % get target frequency index and data
+                if usepts
+                    [~,fidx] = min(abs(1/bands(j,1)-CLIM.FRQ));
+                    ww3allbp(j,i) =  CLIM.SPECTDAT(fidx,didx);
+                else                   
+                    fidx = find((bands(j,1)<=1./CLIM.FRQ) & (1./CLIM.FRQ<=bands(j,2)));
+                    dattmp = CLIM.SPECTDAT(fidx,didx);
+                    % convert from dB to power
+                    powtmp = 10 .^ (double(dattmp)./10);
+                    % compute integration in band
+                    powsum = trapz(CLIM.FRQ,powtmp);
+                    % convert to dB
+                    ww3allbp(j,i) = 10*log10(powsum);  
+                end
+            end
+        end
+    end
 
 
     %% compute events in power-time space exceeding Xth percentile
     % this is similar to ww3 climatology work
+    % initialize plots
+    hf1 = figure;
+    hf1.Position = [1 1 700*Nbands 800];
+    hf2 = figure;
+    hf2.Position = [1 1 700*Nbands 800];
 
-    % for ww3 p2l
+    % initialize peak positions (relative to times)
+    ww3allpeakidx = {};
+    ww3peakidx = {};
+    merpeakidx = {};
 
-    % for MERMAID
+    % initialize removed season versions
+    ww3pow_SR = nan(size(ww3pow));
+    ww3allbp_SR = nan(size(ww3allbp));
+    bandpow_SR = nan(size(bandpow));
 
-    % for copernicus average wave height across basin?? (maybe we don't
-    % need this) kiss
+    % loop over the bands
+    for i = 1:Nbands
+        % for MERMAID with seasonality
+        set(0,'CurrentFigure',hf1);
+        ha = subplot(3,Nbands,i);
+        scatter(ha,times,bandpow(i,:),2,'k.')
+        title(ha,['MERMAID Power @',num2str(bands(i,:)),'s']);
+        bookfonts_TNR(12);
 
-    % compare results
+        % remove seasonal trend of MERMAID
+        seastmp = nan(length(times),1);
+        for j = 1:length(times)
+            [~,didx] = min(abs(climctrs-doy(j)));
+            seastmp(j) = merclim.bandpow(i,didx);
+        end
+        bandpow_SR(i,:) = bandpow(i,:)-seastmp';
+        
+        % for MERMAID without seasonality
+        set(0,'CurrentFigure',hf2);
+        ha = subplot(3,Nbands,i);
+        scatter(ha,times,bandpow_SR(i,:),2,'k.')
+        title(ha,['Seasonality Removed MERMAID Power @',num2str(bands(i,:)),'s']);
+        % get percentiles
+        peaklevel = prctile(bandpow_SR(i,:),prctthresh);
+        gidx = find(bandpow_SR(i,:) >= peaklevel);
+        merpeakidx{i} = gidx;
+        hold(ha,'on');
+        hp = plot(ha,ha.XLim,[peaklevel peaklevel],'r-');
+        scatter(ha,times(gidx),bandpow_SR(i,gidx),5,'r.');
+        legend(ha,hp,[num2str(prctthresh),'th percentile'],'Location','southeast');
+        bookfonts_TNR(12);
 
-    % these should probably be binned by month or week or something as counts to compare
+        % for ww3 p2l (associated)
+        set(0,'CurrentFigure',hf1);
+        ha = subplot(3,Nbands,Nbands+i);
+        scatter(ha,times,ww3pow(i,:),2,'k.')
+        title(ha,['WW3 Power @',num2str(bands(i,:)),'s']);
+        bookfonts_TNR(12);
+
+        % remove seasonal trend of WW3
+        seastmp = nan(length(times),1);
+        for j = 1:length(times)
+            [~,didx] = min(abs(climctrs-doy(j)));
+            seastmp(j) = ww3clim.bandpow(i,didx);
+        end
+        ww3pow_SR(i,:) = ww3pow(i,:)-seastmp';
+        
+        % for WW3 without seasonality
+        set(0,'CurrentFigure',hf2);
+        ha = subplot(3,Nbands,Nbands+i);
+        scatter(ha,times,ww3pow_SR(i,:),2,'k.')
+        title(ha,['Seasonality Removed WW3 Power @',num2str(bands(i,:)),'s']);
+        % get percentiles
+        peaklevel = prctile(ww3pow_SR(i,:),prctthresh);
+        gidx = find(ww3pow_SR(i,:) >= peaklevel);
+        ww3peakidx{i} = gidx;
+        hold(ha,'on');
+        hp = plot(ha,ha.XLim,[peaklevel peaklevel],'r-');
+        scatter(ha,times(gidx),ww3pow_SR(i,gidx),5,'r.');
+        legend(ha,hp,[num2str(prctthresh),'th percentile'],'Location','southeast');
+        bookfonts_TNR(12);
+
+        % for ww3 pwl (whole-basin)
+        set(0,'CurrentFigure',hf1);
+        ha = subplot(3,Nbands,2*Nbands+i);
+        scatter(ha,times,ww3allbp(i,:),2,'k.')
+        title(ha,['All WW3 Power @',num2str(bands(i,:)),'s']);
+        bookfonts_TNR(12);
+
+        % remove seasonal trend of WW3
+        seastmp = nan(length(times),1);
+        for j = 1:length(times)
+            [~,didx] = min(abs(climctrs-doy(j)));
+            seastmp(j) = ww3allbpdoy(i,didx);
+        end
+        ww3allbp_SR(i,:) = ww3allbp(i,:)-seastmp';
+        
+        % for MERMAID without seasonality
+        set(0,'CurrentFigure',hf2);
+        ha = subplot(3,Nbands,2*Nbands+i);
+        scatter(ha,times,ww3allbp_SR(i,:),2,'k.')
+        title(ha,['Seasonality Removed All WW3 Power @',num2str(bands(i,:)),'s']);
+        % get percentiles
+        peaklevel = prctile(ww3allbp_SR(i,:),prctthresh);
+        gidx = find(ww3allbp_SR(i,:) >= peaklevel);
+        ww3allpeakidx{i} = gidx;
+        hold(ha,'on');
+        hp = plot(ha,ha.XLim,[peaklevel peaklevel],'r-');
+        scatter(ha,times(gidx),ww3allbp_SR(i,gidx),5,'r.');
+        legend(ha,hp,[num2str(prctthresh),'th percentile'],'Location','southeast');
+        bookfonts_TNR(12);
+    end
+    % save figures
+    savefig([c_output,'peakevents_timeseries'],hf1.Number,'pdf');
+    savefig([c_output,'peakevents_timeseries_SR'],hf2.Number,'pdf');
+
+    %% compare results (do peak times align?)
+    % identify "high microseism days"
+    for i = 1:Nbands
+        % save unique days data
+        peakdays(i).ww3 = unique(floor(datenum(times(ww3peakidx{i}))));
+        peakdays(i).ww3all = unique(floor(datenum(times(ww3allpeakidx{i}))));
+        peakdays(i).mer = unique(floor(datenum(times(merpeakidx{i}))));
+    end
+
+    % aggregate data
+    alldays = {};
+    allstr = {}; % labels
+    count = 0;
+    for j = 1:3
+        for i = 1:Nbands
+            count = count+1;
+            % get data
+            if j==1 % mer
+                alldays{count} = peakdays(i).mer;
+                allstr{count} = ['MER ',num2str(bands(i,1)),'-',num2str(bands(i,2)),'s'];
+            elseif j==2 % ww3
+                alldays{count} = peakdays(i).ww3;
+                allstr{count} = ['WW3 ',num2str(bands(i,1)),'-',num2str(bands(i,2)),'s'];
+            elseif j==3 % ww3 all
+                alldays{count} = peakdays(i).ww3all;
+                allstr{count} = ['WW3all ',num2str(bands(i,1)),'-',num2str(bands(i,2)),'s'];
+            else
+                error('''j'' indexing is off!')
+            end
+        end
+    end
+
+    % make 6x6 matrix of % similarity
+    simmat = nan(Nbands*3);
+    for i = 1:Nbands*3
+        for j = 1:Nbands*3
+            % what fraction of days in the i set are also in the j set
+            simmat(i,j) = length(intersect(alldays{i},alldays{j}))/length(alldays{i});
+        end
+    end
+    % plot them
+    figure; ha = axes;
+    imagesc(simmat');
+    ha.YDir = 'normal';
+    ha.YTickLabels = allstr;
+    ha.XTickLabels = allstr;
+    ha.XTickLabelRotation = 90;
+    colorbar();
+    title('Fraction of Peak Microseism Days in X also in Y');
+    bookfonts_TNR(14);
+    savefig([c_output,'intersect_frac_matrix'],gcf().Number,'pdf');
+
+    % look at overall numbers
+    figure;  ha = axes;
+    allcts = cellfun(@length,alldays);
+    bar(allcts);
+    ha.XTickLabels = allstr;
+    ha.XTickLabelRotation = 90;
+    title('Peak Microseism Day Counts');
+    bookfonts_TNR(14);
+    savefig([c_output,'peakmicroseismdaycounts'],gcf().Number,'pdf');
+
+
+    % find fourier trends of peaks???
+
+    %% get correlation of season removed data
+    % this should be a 6x6 matrix (2 bands and 3 types, more if more bands)
 
 
     %% compute transfer functions??
