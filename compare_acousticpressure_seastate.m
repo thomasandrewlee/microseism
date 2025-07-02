@@ -42,9 +42,9 @@ usr_str = '/Users/tl7869/';
 % data sources
 useww3 = true; % also compare ww3 data
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
-c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_SEAFLOOR/'];
-c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_SEAFLOOR/data.mat']; % climatology data (precomputed)
-c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_SEAFLOOR/'];
+c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_1500/'];
+c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_1500/data.mat']; % climatology data (precomputed)
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_1500/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
@@ -349,6 +349,7 @@ hf = figure; ha = axes;
 scatter(ha,times,bandpow,'.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
 ha.Title.String = 'Power in Bands for All Buoys';
 legend(ha,num2str(bands));
+bookfonts_TNR(14);
 savefig([c_output,'bands_w_time'],hf.Number,'png');
 close(hf);
 % make same figure but split up as line plots
@@ -357,6 +358,7 @@ for i = 1:Nbands
     ha = subplot(Nbands,1,i);
     scatter(ha,times,bandpow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
     ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for All Buoys'];
+    bookfonts_TNR(14);
 end
 savefig([c_output,'bands_w_time_split'],hf.Number,'png');
 close(hf);
@@ -365,6 +367,7 @@ if useww3
     scatter(ha,times,ww3pow,'.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
     ha.Title.String = 'Power in Bands for WW3';
     legend(ha,num2str(bands));
+    bookfonts_TNR(14);
     savefig([c_output,'bands_w_time_ww3'],hf.Number,'png');
     close(hf);
     % make same figure but split up as line plots
@@ -373,6 +376,7 @@ if useww3
         ha = subplot(Nbands,1,i);
         scatter(ha,times,ww3pow(i,:),'k.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5);
         ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for WW3'];
+        bookfonts_TNR(14);
     end
     savefig([c_output,'bands_w_time_split'],hf.Number,'png');
     close(hf);
@@ -400,6 +404,7 @@ for i = 1:length(cvars)
     ha.Title.String = [cvarslab{i},' vs Linear Power in Bands'];
     legend(ha,num2str(bands));
     ha.YLim = [0,prctile(bandpowlin,99,"all")];
+    bookfonts_TNR(14);
     savefig([c_output,cvars{i},'_lin'],hf.Number,'pdf')
     close(hf);
     % make as 2d histogram
@@ -410,6 +415,7 @@ for i = 1:length(cvars)
         histogram2(ha,varofint(i,:),bandpow(j,:),50,'DisplayStyle','tile',...
             'EdgeColor','none','ShowEmptyBins','on');
         ha.Title.String = [cvarslab{i},' vs ',num2str(bands(j,:))];
+        bookfonts_TNR(14);
     end
     savefig([c_output,cvars{i},'_heatmap'],hf.Number,'pdf')
     close(hf);
@@ -419,6 +425,7 @@ hf = figure; ha = axes;
 scatter(ha,ww3pow',bandpow')
 ha.Title.String = 'WW3 vs MERMAID Power in Bands';
 legend(ha,num2str(bands));
+bookfonts_TNR(14);
 savefig([c_output,'ww3'],hf.Number,'pdf')
 close(hf);
 % 2d histogram
@@ -431,6 +438,7 @@ for j = 1:Nbands
     ha.Title.String = ['WW3 vs MERMAID @',num2str(bands(j,:)),'s'];
     ha.XLabel.String = 'WW3';
     ha.YLabel.String = 'MERMAID';
+    bookfonts_TNR(14);
 end
 savefig([c_output,'ww3_heatmap'],hf1.Number,'pdf')
 close(hf1);
@@ -447,6 +455,7 @@ for j = 1:Nbands
     ha.YLabel.String = 'MERMAID';
     cb = colorbar(ha); cb.Label.String = 'Day of Year';
     colormap(ph);
+    bookfonts_TNR(14);
 end
 exportgraphics(hf2,[c_output,'ww3_mermaid_trajectory.pdf'],'ContentType','vector','BackgroundColor','none');
 close(hf2);
@@ -460,10 +469,11 @@ if dofreqanalysis
         [power,f,~] = lomb(tmppow,daytime);
         hf = figure; ha = axes;
         plot(ha,1./f,power); 
-        xlim(ha,[0,400]); ha.XScale = 'log';
+        xlim(ha,[0,400]); ha.XScale = 'log'; ha.YScale='log';
         ha.XLabel.String = "Days / Cycle";
         ha.Title.String = ['Band: ',num2str(bands(i,:))];
         ha.XMinorGrid = true;
+        bookfonts_TNR(14);
         savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
         close(hf);
         if useww3 % fourier for ww3
@@ -476,6 +486,7 @@ if dofreqanalysis
             ha.XLabel.String = "Days / Cycle";
             ha.Title.String = ['Band: ',num2str(bands(i,:))];
             ha.XMinorGrid = true;
+            bookfonts_TNR(14);
             savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
             close(hf);
         end
@@ -491,12 +502,13 @@ if dofreqanalysis
         ha.XLabel.String = "Days / Cycle";
         ha.Title.String = cvarslab{i};
         ha.XMinorGrid = true;
+        bookfonts_TNR(14);
         savefig([c_output,'Spectra_',cvars{i}],hf.Number,'pdf')
         close(hf);
     end
 end
 
-%% compute spectral transfer functions from ww3 to MERMAID
+%% do stuff specifically for ww3 and mermaid
 if useww3
     %% compute and plot average spectra
     hf = figure; ha = axes;
@@ -507,6 +519,7 @@ if useww3
     ha.Title.String = 'Average Spectras';
     ha.XLabel.String = 'Period (s)';
     ha.YLabel.String = 'dB';
+    bookfonts_TNR(14);
     savefig([c_output,'AvgSpects'],hf.Number,'pdf')
     close(hf);
     % now the median spectra
@@ -518,6 +531,7 @@ if useww3
     ha.Title.String = 'Average Spectras';
     ha.XLabel.String = 'Period (s)';
     ha.YLabel.String = 'dB';
+    bookfonts_TNR(14);
     savefig([c_output,'MedSpects'],hf.Number,'pdf')
     close(hf);
 
@@ -535,10 +549,12 @@ if useww3
     ha.XScale = "log"; ha.YScale = "log";
     xlabel('MERMAID'); ylabel('WW3');
     ha.FontSize = 12; ha.Box = true;
+    bookfonts_TNR(14);
     savefig([c_output,'peakperiodcomparison'],hf.Number,'png')
     title('Linear Peak Period of WW3 vs MERMAID');
     ha.XScale = "linear"; ha.YScale = "linear";
     ha.FontSize = 12; ha.Box = true;
+    bookfonts_TNR(14);
     savefig([c_output,'peakperiodcomparison_lin'],hf.Number,'png')
     clf(hf);
     % make as 2d histogram
@@ -550,7 +566,8 @@ if useww3
     ha.XTick = ceil(ha.XLim(1)):10;
     ha.YTick = ceil(ha.YLim(1)):10;
     xlabel('MERMAID'); ylabel('WW3');
-    colorbar(); ha.FontSize = 12;
+    colorbar(); %ha.FontSize = 12;
+    bookfonts_TNR(14);
     title('Peak Period of WW3 vs MERMAID');
     savefig([c_output,'peakperiodcomparison_heatmap'],hf.Number,'pdf')
     close(hf);
@@ -664,17 +681,20 @@ if useww3
     ha1.Title.String = "WW3 5th Percentile";
     ha1.YDir = 'normal'; colorbar;
     ha1.YLabel.String = "Frequency (Hz)";
+    bookfonts_TNR(14);
     ha2 = subplot(3,1,2);
     imagesc(climctrs,ww3f,ww3clim.median)
     ha2.Title.String = "WW3 50th Percentile";
     ha2.YDir = 'normal'; colorbar;
     ha2.YLabel.String = "Frequency (Hz)";
+    bookfonts_TNR(14);
     ha3 = subplot(3,1,3);
     imagesc(climctrs,ww3f,ww3clim.p95)
     ha3.Title.String = "WW3 95th Percentile";
     ha3.YDir = 'normal'; colorbar;
     ha3.YLabel.String = "Frequency (Hz)";
     ha3.XLabel.String = "Day of Year";
+    bookfonts_TNR(14);
     savefig([c_output,'ww3_seasonality_prct'],hf.Number,'pdf')
     close(hf);
     hf = figure;
@@ -683,12 +703,14 @@ if useww3
     ha1.Title.String = "WW3 Mean";
     ha1.YDir = 'normal'; colorbar;
     ha1.YLabel.String = "Frequency (Hz)";
+    bookfonts_TNR(14);
     ha3 = subplot(2,1,2);
     imagesc(climctrs,ww3f,ww3clim.std)
     ha3.Title.String = "WW3 Std";
     ha3.YDir = 'normal'; colorbar;
     ha3.YLabel.String = "Frequency (Hz)";
     ha3.XLabel.String = "Day of Year";
+    bookfonts_TNR(14);
     savefig([c_output,'ww3_seasonality_mean'],hf.Number,'pdf')
     close(hf);
     % and again for MERMAID
@@ -698,17 +720,20 @@ if useww3
     ha1.Title.String = "MERMAID 5th Percentile";
     ha1.YDir = 'normal'; colorbar;
     ha1.YLabel.String = "Frequency (Hz)";
+    bookfonts_TNR(14);
     ha2 = subplot(3,1,2);
     imagesc(climctrs,freq,merclim.median)
     ha2.Title.String = "MERMAID 50th Percentile";
     ha2.YDir = 'normal'; colorbar;
     ha2.YLabel.String = "Frequency (Hz)";
+    bookfonts_TNR(14);
     ha3 = subplot(3,1,3);
     imagesc(climctrs,freq,merclim.p95)
     ha3.Title.String = "MERMAID 95th Percentile";
     ha3.YDir = 'normal'; colorbar;
     ha3.YLabel.String = "Frequency (Hz)";
     ha3.XLabel.String = "Day of Year";
+    bookfonts_TNR(14);
     savefig([c_output,'mermaid_seasonality_prct_full'],hf.Number,'pdf')
     ha1.YLim = [0,2]; ha2.YLim = [0,2]; ha3.YLim = [0,2];
     savefig([c_output,'mermaid_seasonality_prct'],hf.Number,'pdf')
@@ -719,12 +744,14 @@ if useww3
     ha1.Title.String = "MERMAID Mean";
     ha1.YDir = 'normal'; colorbar;
     ha1.YLabel.String = "Frequency (Hz)";
+    bookfonts_TNR(14);
     ha3 = subplot(2,1,2);
     imagesc(climctrs,freq,merclim.std)
     ha3.Title.String = "MERMAID Std";
     ha3.YDir = 'normal'; colorbar;
     ha3.YLabel.String = "Frequency (Hz)";
     ha3.XLabel.String = "Day of Year";
+    bookfonts_TNR(14);
     savefig([c_output,'mermaid_seasonality_mean_full'],hf.Number,'pdf')
     ha1.YLim = [0,2]; ha3.YLim = [0,2];
     savefig([c_output,'mermaid_seasonality_mean'],hf.Number,'pdf')
