@@ -40,11 +40,12 @@ close all
 % path
 usr_str = '/Users/tl7869/';
 % data sources
+runtype = '1500'; % 1500 or SEAFLOOR
 useww3 = true; % also compare ww3 data
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
-c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_SEAFLOOR/'];
-c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_1500/data.mat']; % climatology data (precomputed)
-c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_SEAFLOOR/'];
+c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_',runtype,'/'];
+c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_',runtype,'/data.mat']; % climatology data (precomputed)
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_',runtype,'/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
@@ -1340,7 +1341,7 @@ if useww3
             elseif j==2 % ww3
                 X(count,:) = ww3pow_SR(i,:);
             elseif j==3 % ww3 all
-                X(count,:) = ww3allbp_SRo(i,:);
+                X(count,:) = ww3allbp_SR(i,:);
             else
                 error('''j'' indexing is off!')
             end
