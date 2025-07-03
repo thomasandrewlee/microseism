@@ -42,9 +42,9 @@ usr_str = '/Users/tl7869/';
 % data sources
 useww3 = true; % also compare ww3 data
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
-c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_1500/'];
+c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_SEAFLOOR/'];
 c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_1500/data.mat']; % climatology data (precomputed)
-c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_1500/'];
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_SEAFLOOR/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
@@ -56,7 +56,7 @@ edate = datetime(2025,1,1); % maximum time
 % psd to use
 use50 = false; % otherwise use 95
 % frequency analysis switch
-dofreqanalysis = false;
+dofreqanalysis = true;
 % spatial association
 searchsize = 0; % set to 0 for nearest neighbor, otherwise measure in degree of box half-length
 % band treatment
@@ -83,7 +83,7 @@ cvars = {'VHM0','VHM0_SW1','VHM0_SW2'}; % pared down version
 climwind = 61; % in days % 61 is used in ww3climatology
 climstep = 1; % in days
 % percentile for peak events
-prctthresh = 90; % percentile
+prctthresh = 95; % percentile
 
 % setupdir
 if ~isfolder(c_output)
@@ -350,7 +350,8 @@ scatter(ha,times,bandpow,'.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
 ha.Title.String = 'Power in Bands for All Buoys';
 legend(ha,num2str(bands));
 bookfonts_TNR(14);
-savefig([c_output,'bands_w_time'],hf.Number,'png');
+%savefig([c_output,'bands_w_time'],hf.Number,'png');
+savefig([c_output,'bands_w_time'],hf.Number,'pdf');
 close(hf);
 % make same figure but split up as line plots
 hf = figure;
@@ -360,7 +361,8 @@ for i = 1:Nbands
     ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for All Buoys'];
     bookfonts_TNR(14);
 end
-savefig([c_output,'bands_w_time_split'],hf.Number,'png');
+%savefig([c_output,'bands_w_time_split'],hf.Number,'png');
+savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
 close(hf);
 if useww3
     hf = figure; ha = axes;
@@ -368,7 +370,8 @@ if useww3
     ha.Title.String = 'Power in Bands for WW3';
     legend(ha,num2str(bands));
     bookfonts_TNR(14);
-    savefig([c_output,'bands_w_time_ww3'],hf.Number,'png');
+    %savefig([c_output,'bands_w_time_ww3'],hf.Number,'png');
+    savefig([c_output,'bands_w_time_ww3'],hf.Number,'pdf');
     close(hf);
     % make same figure but split up as line plots
     hf = figure;
@@ -378,7 +381,8 @@ if useww3
         ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for WW3'];
         bookfonts_TNR(14);
     end
-    savefig([c_output,'bands_w_time_split'],hf.Number,'png');
+    %savefig([c_output,'bands_w_time_split'],hf.Number,'png');
+    savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
     close(hf);
 end
 
@@ -550,12 +554,14 @@ if useww3
     xlabel('MERMAID'); ylabel('WW3');
     ha.FontSize = 12; ha.Box = true;
     bookfonts_TNR(14);
-    savefig([c_output,'peakperiodcomparison'],hf.Number,'png')
+    %savefig([c_output,'peakperiodcomparison'],hf.Number,'png');
+    savefig([c_output,'peakperiodcomparison'],hf.Number,'pdf');
     title('Linear Peak Period of WW3 vs MERMAID');
     ha.XScale = "linear"; ha.YScale = "linear";
     ha.FontSize = 12; ha.Box = true;
     bookfonts_TNR(14);
-    savefig([c_output,'peakperiodcomparison_lin'],hf.Number,'png')
+    %savefig([c_output,'peakperiodcomparison_lin'],hf.Number,'png');
+    savefig([c_output,'peakperiodcomparison_lin'],hf.Number,'pdf');
     clf(hf);
     % make as 2d histogram
     ha = axes;
@@ -1330,11 +1336,11 @@ if useww3
             count = count+1;
             % get data
             if j==1 % mer
-                X(count,:) = bandpow(i,:);
+                X(count,:) = bandpow_SR(i,:);
             elseif j==2 % ww3
-                X(count,:) = ww3pow(i,:);
+                X(count,:) = ww3pow_SR(i,:);
             elseif j==3 % ww3 all
-                X(count,:) = ww3allbp(i,:);
+                X(count,:) = ww3allbp_SRo(i,:);
             else
                 error('''j'' indexing is off!')
             end
