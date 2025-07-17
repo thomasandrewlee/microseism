@@ -64,8 +64,8 @@ searchsize = 0; % set to 0 for nearest neighbor, otherwise measure in degree of 
 interpspect = true; % use interpolation instead of nearest neighbor
 usepts = false; % ignore bands use first frequency as instant value (frq)
 % bands (in seconds)
-% bands = [[1:17]' [4:20]']; % col1 = band start (s), col2 = band end (s)
-bands = [1.5 5; 5 8.5];
+bands = [[1:2:9]' [4:2:12]']; % col1 = band start (s), col2 = band end (s)
+%bands = [1.5 5; 5 8.5];
 %bands = [9 11; 4 6; 2 4; 1 3]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz
 %bands = [9.5 10.5; 4.5 5.5; 2.5 3.5; 1.5 2.5]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz (1s bands)
 %bands = [1/0.1; 1/0.2; 1/0.3; 1/0.5];
@@ -85,6 +85,9 @@ climwind = 61; % in days % 61 is used in ww3climatology
 climstep = 1; % in days
 % percentile for peak events
 prctthresh = 95; % percentile
+% plotting output type
+varouttype = 'png'; % use this for non-vectorized plots if getting long-time holdups for too many points
+%varouttype = 'pdf'; % standard
 
 % setupdir
 if ~isfolder(c_output)
@@ -351,8 +354,7 @@ scatter(ha,times,bandpow,'.','MarkerFaceAlpha',0.5,'MarkerEdgeAlpha',0.5)
 ha.Title.String = 'Power in Bands for All Buoys';
 legend(ha,num2str(bands));
 bookfonts_TNR(14);
-%savefig([c_output,'bands_w_time'],hf.Number,'png');
-savefig([c_output,'bands_w_time'],hf.Number,'pdf');
+savefig([c_output,'bands_w_time'],hf.Number,varouttype);
 close(hf);
 % make same figure but split up as line plots
 hf = figure;
@@ -362,8 +364,7 @@ for i = 1:Nbands
     ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for All Buoys'];
     bookfonts_TNR(14);
 end
-%savefig([c_output,'bands_w_time_split'],hf.Number,'png');
-savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
+savefig([c_output,'bands_w_time_split'],hf.Number,varouttype);
 close(hf);
 if useww3
     hf = figure; ha = axes;
@@ -371,8 +372,7 @@ if useww3
     ha.Title.String = 'Power in Bands for WW3';
     legend(ha,num2str(bands));
     bookfonts_TNR(14);
-    %savefig([c_output,'bands_w_time_ww3'],hf.Number,'png');
-    savefig([c_output,'bands_w_time_ww3'],hf.Number,'pdf');
+    savefig([c_output,'bands_w_time_ww3'],hf.Number,varouttype);
     close(hf);
     % make same figure but split up as line plots
     hf = figure;
@@ -382,8 +382,7 @@ if useww3
         ha.Title.String = ['Power in ',num2str(bands(i,:)),'s Band for WW3'];
         bookfonts_TNR(14);
     end
-    %savefig([c_output,'bands_w_time_split'],hf.Number,'png');
-    savefig([c_output,'bands_w_time_split'],hf.Number,'pdf');
+    savefig([c_output,'bands_w_time_split'],hf.Number,varouttype);
     close(hf);
 end
 
@@ -515,6 +514,9 @@ end
 
 %% do stuff specifically for ww3 and mermaid
 if useww3
+     %% read in the data from climatology
+    CLIM = load(c_MAT_WW3CLIM); % we won't use this for a while except for the below plot
+
     %% compute and plot average spectra
     hf = figure; ha = axes;
     errorbar(prd,mean(merspect,2,"omitnan"),std(merspect,0,2,"omitnan"));
@@ -526,7 +528,36 @@ if useww3
     ha.YLabel.String = 'dB';
     bookfonts_TNR(14);
     savefig([c_output,'AvgSpects'],hf.Number,'pdf')
+    % make it with log scale and both period and freq axes
+    ha.XScale = 'log';
+    ha.XMinorTick = true;
+    ha.XMinorGrid = true;
+    ha.YMinorGrid = true;
+    % get whole basin version
+    errorbar(ww3prd,mean(CLIM.SPECTDAT,2,"omitnan"),std(CLIM.SPECTDAT,0,2,"omitnan"));
+    legend('MERMAID','WW3 Assc.','WW3 All');
+    % try and load a global spect
+    c_globalspectfile = [usr_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
+    if isfile(c_globalspectfile)
+        globww3 = load(c_globalspectfile);
+        plot(0.5./globww3.f,squeeze(globww3.D)); % globww3.D should be 1x1x36, f needs to be doubled
+        legend('MERMAID','WW3 Assc.','WW3 All','Global WW3');
+    else
+        warning("Specified global spectra for AvgSpects.pdf is not found")
+    end
+    % resave new version
+    savefig([c_output,'AvgSpectsImproved'],hf.Number,'pdf')
+    % resave trimmed version
+    ha.YLim = [-130 ha.YLim(2)]; % this seems reasonable
+    savefig([c_output,'AvgSpectsImprovedTrimmed'],hf.Number,'pdf')
+    % resave version with frequency
+    ha.XTickLabels = num2str((1./ha.XTick)');
+    ha.XDir = 'reverse';
+    ha.XLabel.String = 'Frequency (Hz)';
+    savefig([c_output,'AvgSpectsImprovedTrimmedFreq'],hf.Number,'pdf')
+    % close the figure
     close(hf);
+
     % now the median spectra
     hf = figure; ha = axes;
     plot(prd,median(merspect,2,"omitnan"));
@@ -555,14 +586,12 @@ if useww3
     xlabel('MERMAID'); ylabel('WW3');
     ha.FontSize = 12; ha.Box = true;
     bookfonts_TNR(14);
-    %savefig([c_output,'peakperiodcomparison'],hf.Number,'png');
-    savefig([c_output,'peakperiodcomparison'],hf.Number,'pdf');
+    savefig([c_output,'peakperiodcomparison'],hf.Number,varouttype);
     title('Linear Peak Period of WW3 vs MERMAID');
     ha.XScale = "linear"; ha.YScale = "linear";
     ha.FontSize = 12; ha.Box = true;
     bookfonts_TNR(14);
-    %savefig([c_output,'peakperiodcomparison_lin'],hf.Number,'png');
-    savefig([c_output,'peakperiodcomparison_lin'],hf.Number,'pdf');
+    savefig([c_output,'peakperiodcomparison_lin'],hf.Number,varouttype);
     clf(hf);
     % make as 2d histogram
     ha = axes;
@@ -827,9 +856,6 @@ if useww3
     % save
     savefig([c_output,'MERvsWW3_doy_separatebands'],hf.Number,'pdf');
     close(hf);
-
-    %% read in the data from climatology
-    CLIM = load(c_MAT_WW3CLIM);
 
     %% add mermaid data to plots of seasonality on a map
     % load coastline
@@ -1347,7 +1373,7 @@ if useww3
             end
         end
     end
-    gidx = find(sum(~isnan(X),1)==6);
+    gidx = find(sum(~isnan(X),1)==Nbands*3);
     corrmat = corr(X(:,gidx)');
     % plot 
     figure; ha = axes;
