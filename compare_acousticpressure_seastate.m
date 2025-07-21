@@ -44,8 +44,10 @@ runtype = '1500'; % 1500 or SEAFLOOR
 useww3 = true; % also compare ww3 data
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
 c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_',runtype,'/'];
-c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_',runtype,'/data.mat']; % climatology data (precomputed)
-c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_',runtype,'/'];
+c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_NATL_',runtype,'/data.mat']; % climatology data (precomputed)
+climtype = 'WW3 NATL'; % NATL or MED for labelling
+climtype = 'WW3 MED All';
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_NATL_',runtype,'/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
@@ -519,9 +521,9 @@ if useww3
 
     %% compute and plot average spectra
     hf = figure; ha = axes;
-    errorbar(prd,mean(merspect,2,"omitnan"),std(merspect,0,2,"omitnan"));
+    errorbar(prd,10*log10(mean(10.^(merspect/10),2,"omitnan")),std(merspect,0,2,"omitnan"));
     hold on;
-    errorbar(ww3prd,mean(ww3spect,2,"omitnan"),std(ww3spect,0,2,"omitnan"));
+    errorbar(ww3prd,10*log10(mean(10.^(ww3spect/10),2,"omitnan")),std(ww3spect,0,2,"omitnan"));
     legend('MERMAID','WW3')
     ha.Title.String = 'Average Spectras';
     ha.XLabel.String = 'Period (s)';
@@ -535,13 +537,14 @@ if useww3
     ha.YMinorGrid = true;
     % get whole basin version
     errorbar(ww3prd,mean(CLIM.SPECTDAT,2,"omitnan"),std(CLIM.SPECTDAT,0,2,"omitnan"));
-    legend('MERMAID','WW3 Assc.','WW3 All');
+    legend('MERMAID','WW3 Assc.',climtype);
     % try and load a global spect
-    c_globalspectfile = [usr_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
+    %c_globalspectfile = [usr_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
+    c_globalspectfile = [usr_str,'Downloads/WW3_NATL_SPECT/P2L/spectras.mat'];
     if isfile(c_globalspectfile)
         globww3 = load(c_globalspectfile);
-        plot(0.5./globww3.f,squeeze(globww3.D)); % globww3.D should be 1x1x36, f needs to be doubled
-        legend('MERMAID','WW3 Assc.','WW3 All','Global WW3');
+        plot(1./globww3.f,squeeze(globww3.D)); % globww3.D should be 1x1x36, f needs to be doubled
+        legend('MERMAID','WW3 Assc.',climtype,'Global WW3');
     else
         warning("Specified global spectra for AvgSpects.pdf is not found")
     end
@@ -1015,7 +1018,7 @@ if useww3
     for i = 1:Nbands
         hp1 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);    
         hp2 = plot(climctrs,ww3clim.bandpow(i,:),':','LineWidth',3);
-        legstr{2*i-1} = ['WW3 All: ',num2str(bands(i,:))];
+        legstr{2*i-1} = [climtype,': ',num2str(bands(i,:))];
         legstr{2*i} = ['WW3 Asc: ',num2str(bands(i,:))];
     end
     legend(legstr,'Location','southeast');
@@ -1032,7 +1035,7 @@ if useww3
     colormap(ph);
     colorbar();
     legend(ha,num2str(bands),'Location','southeast');
-    xlabel('WW3 All'); ylabel('WW3 Associated');
+    xlabel(climtype); ylabel('WW3 Associated');
     title('Seasonal Power vs Power');
     ha.Box = true; bookfonts_TNR(16);
     % save
@@ -1048,7 +1051,7 @@ if useww3
         hold(ha,'on');
         hp1 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);    
         hp2 = plot(climctrs,ww3clim.bandpow(i,:),':','LineWidth',3);
-        legstr{1} = ['WW3 All: ',num2str(bands(i,:))];
+        legstr{1} = [climtype,': ',num2str(bands(i,:))];
         legstr{2} = ['WW3 Asc: ',num2str(bands(i,:))];
         legend(legstr,'Location','southeast');
         title('Seasonality');
@@ -1062,7 +1065,7 @@ if useww3
         colormap(ph);
         colorbar();
         legend(ha,num2str(bands(i,:)),'Location','southeast');
-        xlabel('WW3 All'); ylabel('WW3 Associated');
+        xlabel(climtype); ylabel('WW3 Associated');
         title('Seasonal Power vs Power');
         ha.Box = true; bookfonts_TNR(16);
     end
@@ -1080,7 +1083,7 @@ if useww3
         hp1 = plot(climctrs,merclim.bandpow(i,:),'-','LineWidth',2);    
         hp2 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);
         legstr{2*i-1} = ['MER: ',num2str(bands(i,:))];
-        legstr{2*i} = ['WW3 All: ',num2str(bands(i,:))];
+        legstr{2*i} = [climtype,': ',num2str(bands(i,:))];
     end
     legend(legstr,'Location','southeast');
     title('Seasonality');
@@ -1096,7 +1099,7 @@ if useww3
     colormap(ph);
     colorbar();
     legend(ha,num2str(bands),'Location','southeast');
-    xlabel('MERMAID'); ylabel('WW3 All');
+    xlabel('MERMAID'); ylabel(climtype);
     title('Seasonal Power vs Power');
     ha.Box = true; bookfonts_TNR(16);
     % save
@@ -1113,7 +1116,7 @@ if useww3
         hp1 = plot(climctrs,merclim.bandpow(i,:),'-','LineWidth',2);    
         hp2 = plot(climctrs,ww3allbpdoy(i,:),'-.','LineWidth',3);
         legstr{1} = ['MER: ',num2str(bands(i,:))];
-        legstr{2} = ['WW3 All: ',num2str(bands(i,:))];
+        legstr{2} = [climtype,': ',num2str(bands(i,:))];
         legend(legstr,'Location','southeast');
         title('Seasonality');
         xlabel('DOY'); ylabel('dB');
@@ -1126,7 +1129,7 @@ if useww3
         colormap(ph);
         colorbar();
         legend(ha,num2str(bands(i,:)),'Location','southeast');
-        xlabel('MERMAID'); ylabel('WW3 All');
+        xlabel('MERMAID'); ylabel(climtype);
         title('Seasonal Power vs Power');
         ha.Box = true; bookfonts_TNR(16);
     end
@@ -1313,7 +1316,7 @@ if useww3
                 allstr{count} = ['WW3 ',num2str(bands(i,1)),'-',num2str(bands(i,2)),'s'];
             elseif j==3 % ww3 all
                 alldays{count} = peakdays(i).ww3all;
-                allstr{count} = ['WW3all ',num2str(bands(i,1)),'-',num2str(bands(i,2)),'s'];
+                allstr{count} = [climtype,' ',num2str(bands(i,1)),'-',num2str(bands(i,2)),'s'];
             else
                 error('''j'' indexing is off!')
             end
