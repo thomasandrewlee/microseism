@@ -46,7 +46,7 @@ c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.ma
 c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_',runtype,'/'];
 c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_NATL_',runtype,'/data.mat']; % climatology data (precomputed)
 climtype = 'WW3 NATL'; % NATL or MED for labelling
-climtype = 'WW3 MED All';
+%climtype = 'WW3 MED All';
 c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_NATL_',runtype,'/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
@@ -239,7 +239,7 @@ for i = 1:length(MERDAT)
                     ww3lonidx = find((ww3lon<=lon(colnum)+searchsize) & (ww3lon>=lon(colnum)-searchsize));
                     % spatial average
                     dattmp = squeeze(ww3d(ww3lonidx,ww3latidx,:,ww3tidx));
-                    dattmp = squeeze(mean(mean(dattmp,1),2));
+                    dattmp = 10*log10(squeeze(mean(mean(10.^(dattmp/10),1),2)));
                     % save spectra
                     ww3spect(:,colnum) = dattmp;
                 end
@@ -536,15 +536,15 @@ if useww3
     ha.XMinorGrid = true;
     ha.YMinorGrid = true;
     % get whole basin version
-    errorbar(ww3prd,mean(CLIM.SPECTDAT,2,"omitnan"),std(CLIM.SPECTDAT,0,2,"omitnan"));
+    errorbar(ww3prd,10*log10(mean(10.^(CLIM.SPECTDAT/10),2,"omitnan")),std(CLIM.SPECTDAT,0,2,"omitnan"));
     legend('MERMAID','WW3 Assc.',climtype);
     % try and load a global spect
     %c_globalspectfile = [usr_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
     c_globalspectfile = [usr_str,'Downloads/WW3_NATL_SPECT/P2L/spectras.mat'];
     if isfile(c_globalspectfile)
         globww3 = load(c_globalspectfile);
-        plot(1./globww3.f,squeeze(globww3.D)); % globww3.D should be 1x1x36, f needs to be doubled
-        legend('MERMAID','WW3 Assc.',climtype,'Global WW3');
+        plot(1./globww3.f,squeeze(globww3.D)); % globww3.D should be 1x1x36, f needs to be doubled if EF
+        legend('MERMAID','WW3 Assc.',climtype,'NATL WW3');
     else
         warning("Specified global spectra for AvgSpects.pdf is not found")
     end
