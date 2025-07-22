@@ -46,8 +46,10 @@ c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.ma
 c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_',runtype,'/'];
 c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_NATL_',runtype,'/data.mat']; % climatology data (precomputed)
 climtype = 'WW3 NATL'; % NATL or MED for labelling
-%climtype = 'WW3 MED All';
 c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_NATL_',runtype,'/'];
+%c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_',runtype,'/data.mat']; 
+%climtype = 'WW3 MED All';
+%c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_',runtype,'/'];
 c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data location
 % c_MERDAT_COP = '/Users/thomaslee/Downloads/MERMAID_Plots/MERDAT_TEST_COPERNICUS.mat';
 % c_MAT_WW3 = '/Users/thomaslee/Downloads/WW3_OUT_NEW_EF/';
@@ -480,7 +482,7 @@ if dofreqanalysis
         ha.Title.String = ['Band: ',num2str(bands(i,:))];
         ha.XMinorGrid = true;
         bookfonts_TNR(14);
-        savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
+        savefig([c_output,'Spectra_Band_MER_',num2str(i)],hf.Number,'pdf')
         close(hf);
         if useww3 % fourier for ww3
             tmppow = ww3pow(i,:) - mean(ww3pow(i,:),"omitnan");
@@ -488,12 +490,12 @@ if dofreqanalysis
             [power,f,~] = lomb(tmppow,daytime);
             hf = figure; ha = axes;
             plot(ha,1./f,power); 
-            xlim(ha,[0,400]); ha.XScale = 'log';
+            xlim(ha,[0,400]); ha.XScale = 'log'; ha.YScale='log';
             ha.XLabel.String = "Days / Cycle";
             ha.Title.String = ['Band: ',num2str(bands(i,:))];
             ha.XMinorGrid = true;
             bookfonts_TNR(14);
-            savefig([c_output,'Spectra_Band_',num2str(i)],hf.Number,'pdf')
+            savefig([c_output,'Spectra_Band_WW3_',num2str(i)],hf.Number,'pdf')
             close(hf);
         end
     end
@@ -504,7 +506,7 @@ if dofreqanalysis
         [power,f,~] = lomb(tmppow,daytime);
         hf = figure; ha = axes;
         plot(ha,1./f,power); 
-        xlim(ha,[0,400]); ha.XScale = 'log';
+        xlim(ha,[0,400]); ha.XScale = 'log'; ha.YScale='log';
         ha.XLabel.String = "Days / Cycle";
         ha.Title.String = cvarslab{i};
         ha.XMinorGrid = true;
@@ -539,9 +541,10 @@ if useww3
     errorbar(ww3prd,10*log10(mean(10.^(CLIM.SPECTDAT/10),2,"omitnan")),std(CLIM.SPECTDAT,0,2,"omitnan"));
     legend('MERMAID','WW3 Assc.',climtype);
     % try and load a global spect
-    %c_globalspectfile = [usr_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
+    % c_globalspectfile = [usr_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
     c_globalspectfile = [usr_str,'Downloads/WW3_NATL_SPECT/P2L/spectras.mat'];
-    if isfile(c_globalspectfile)
+    %c_globalspectfile = [];
+    if ~isempty(c_globalspectfile)
         globww3 = load(c_globalspectfile);
         plot(1./globww3.f,squeeze(globww3.D)); % globww3.D should be 1x1x36, f needs to be doubled if EF
         legend('MERMAID','WW3 Assc.',climtype,'NATL WW3');
