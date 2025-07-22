@@ -1261,7 +1261,7 @@ if useww3
         set(0,'CurrentFigure',hf1);
         ha = subplot(3,Nbands,2*Nbands+i);
         scatter(ha,times,ww3allbp(i,:),2,'k.')
-        title(ha,['All WW3 Power @',num2str(bands(i,:)),'s']);
+        title(ha,[climtype,' Power @',num2str(bands(i,:)),'s']);
         bookfonts_TNR(12);
 
         % remove seasonal trend of WW3
@@ -1276,7 +1276,7 @@ if useww3
         set(0,'CurrentFigure',hf2);
         ha = subplot(3,Nbands,2*Nbands+i);
         scatter(ha,times,ww3allbp_SR(i,:),2,'k.')
-        title(ha,['Seasonality Removed All WW3 Power @',num2str(bands(i,:)),'s']);
+        title(ha,['Seasonality Removed ',climtype,' Power @',num2str(bands(i,:)),'s']);
         % get percentiles
         peaklevel = prctile(ww3allbp_SR(i,:),prctthresh);
         gidx = find(ww3allbp_SR(i,:) >= peaklevel);
