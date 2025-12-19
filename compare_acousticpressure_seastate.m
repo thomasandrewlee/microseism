@@ -38,7 +38,7 @@ close all
 
 %% setup
 % path
-usr_str = '/Users/tl7869/';
+usr_str = '/Users/thomaslee/';
 % data sources
 runtype = '1500'; % 1500 or SEAFLOOR
 useww3 = true; % also compare ww3 data
