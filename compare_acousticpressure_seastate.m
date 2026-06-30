@@ -42,11 +42,12 @@ usr_str = '/Users/thomaslee/';
 % data sources
 runtype = '1500'; % 1500 or SEAFLOOR
 useww3 = true; % also compare ww3 data
-c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_new/MERDAT_TEST_new_COPERNICUS.mat'];
-c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_P2L_',runtype,'/'];
-c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_NATL_',runtype,'/data.mat']; % climatology data (precomputed)
-climtype = 'WW3 NATL'; % NATL or MED for labelling
-c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_NATL_',runtype,'/'];
+% c_MERDAT_COP = [usr_str,'Desktop/CopernicusWaveNew/COPERNICUS_TEST_2021_25.mat'];
+c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_CorrBW3/MERDAT_TEST_new_COPERNICUS.mat'];
+c_MAT_WW3 = [usr_str,'Desktop/WW3_OUT_MED_202101_202603_P2L_',runtype,'/'];
+c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_MED_',runtype,'/data.mat']; % climatology data (precomputed)
+climtype = 'WW3 MED'; % NATL or MED for labelling
+c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_MED_',runtype,'/'];
 %c_MAT_WW3CLIM = [usr_str,'Desktop/WW3Seasons_',runtype,'/data.mat']; 
 %climtype = 'WW3 MED All';
 %c_output = [usr_str,'Desktop/acoustic_v_surface_w_bathy_',runtype,'/'];
@@ -57,7 +58,7 @@ c_coast = [usr_str,'Research/10m_coastline/coast.mat']; % coastline data locatio
 % startdate
 sdate = datetime(2021,1,1); % minimum time
 % enddate
-edate = datetime(2025,1,1); % maximum time
+edate = datetime(2026,6,1); % maximum time
 % psd to use
 use50 = false; % otherwise use 95
 % frequency analysis switch
@@ -68,8 +69,8 @@ searchsize = 0; % set to 0 for nearest neighbor, otherwise measure in degree of 
 interpspect = true; % use interpolation instead of nearest neighbor
 usepts = false; % ignore bands use first frequency as instant value (frq)
 % bands (in seconds)
-bands = [[1:2:9]' [4:2:12]']; % col1 = band start (s), col2 = band end (s)
-%bands = [1.5 5; 5 8.5];
+%bands = [[1:2:9]' [4:2:12]']; % col1 = band start (s), col2 = band end (s)
+bands = [1.5 5; 5 8.5];
 %bands = [9 11; 4 6; 2 4; 1 3]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz
 %bands = [9.5 10.5; 4.5 5.5; 2.5 3.5; 1.5 2.5]; % matches 0.1Hz, 0.2Hz, 0.3Hz, 0.5Hz (1s bands)
 %bands = [1/0.1; 1/0.2; 1/0.3; 1/0.5];
@@ -547,7 +548,7 @@ if useww3
     if ~isempty(c_globalspectfile)
         globww3 = load(c_globalspectfile);
         plot(1./globww3.f,squeeze(globww3.D)); % globww3.D should be 1x1x36, f needs to be doubled if EF
-        legend('MERMAID','WW3 Assc.',climtype,'NATL WW3');
+        legend('MERMAID','WW3 Assc.',climtype,'WW3 NATL');
     else
         warning("Specified global spectra for AvgSpects.pdf is not found")
     end
@@ -1338,6 +1339,8 @@ if useww3
     figure; ha = axes;
     imagesc(simmat');
     ha.YDir = 'normal';
+    ha.XTick = 1:length(allstr);
+    ha.YTick = 1:length(allstr);
     ha.YTickLabels = allstr;
     ha.XTickLabels = allstr;
     ha.XTickLabelRotation = 90;
@@ -1385,6 +1388,8 @@ if useww3
     figure; ha = axes;
     imagesc(corrmat);
     ha.YDir = 'normal';
+    ha.XTick = 1:length(allstr);
+    ha.YTick = 1:length(allstr);
     ha.YTickLabels = allstr;
     ha.XTickLabels = allstr;
     ha.XTickLabelRotation = 90;
