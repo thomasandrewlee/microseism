@@ -23,8 +23,8 @@ c_spect = [user_str,'Downloads/WW3_GLOB_SPECT/GLOB/spectras.mat'];
     % leave empty string to skip spectra 
 c_output = [user_str,'Downloads/PrimaryCoefFitRunAmplitude/'];
 c_lindisp = [user_str,'Desktop/MicroseismIntegration/lindisptables/'];
-% freqs = 1 ./ [4:0.25:21];
-freqs = 1 ./ [4:1:20];
+freqs = 1 ./ [4:0.25:21];
+%freqs = 1 ./ [4:1:20];
 percents = 0.0001:0.0001:0.05; % percent change in microseism period
 % freqs = 1 ./ [1:0.5:40];
 % percents = 0.1:0.1:5; % percent change in microseism period
@@ -338,7 +338,8 @@ if ~isempty(c_spect)
 
     %% read rick's violin plot data
     %c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/violinplot.mat'];
-    c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/vel2_violin.mat'];
+    % c_violindat = [user_str,'Research/MicroseismActivityIndex/RickCode/vel2_violin.mat'];
+    c_violindat = [user_str,'Downloads/SM_revision/For_Thomas/tmp_20251112.mat'];
     if isfile(c_violindat)
         tmp = load(c_violindat);
         hfv = figure; % persistent violin plot handle
