@@ -40,7 +40,7 @@ close all
 % path
 usr_str = '/Users/thomaslee/';
 % data sources
-runtype = '1500'; % 1500 or SEAFLOOR
+runtype = '1500_sq'; % 1500 or SEAFLOOR
 useww3 = true; % also compare ww3 data
 % c_MERDAT_COP = [usr_str,'Desktop/CopernicusWaveNew/COPERNICUS_TEST_2021_25.mat'];
 c_MERDAT_COP = [usr_str,'Desktop/MERMAID_Plots_CorrBW3/MERDAT_TEST_new_COPERNICUS.mat'];
@@ -447,6 +447,7 @@ for j = 1:Nbands
     ha.Title.String = ['WW3 vs MERMAID @',num2str(bands(j,:)),'s'];
     ha.XLabel.String = 'WW3';
     ha.YLabel.String = 'MERMAID';
+    cb = colorbar();
     bookfonts_TNR(14);
 end
 savefig([c_output,'ww3_heatmap'],hf1.Number,'pdf')
@@ -530,7 +531,7 @@ if useww3
     legend('MERMAID','WW3')
     ha.Title.String = 'Average Spectras';
     ha.XLabel.String = 'Period (s)';
-    ha.YLabel.String = 'dB';
+    ha.YLabel.String = 'dB (rel. 1 Pa^2/Hz)';
     bookfonts_TNR(14);
     savefig([c_output,'AvgSpects'],hf.Number,'pdf')
     % make it with log scale and both period and freq axes
@@ -573,7 +574,7 @@ if useww3
     legend('MERMAID','WW3')
     ha.Title.String = 'Average Spectras';
     ha.XLabel.String = 'Period (s)';
-    ha.YLabel.String = 'dB';
+    ha.YLabel.String = 'dB (rel. 1 Pa^2/Hz)';
     bookfonts_TNR(14);
     savefig([c_output,'MedSpects'],hf.Number,'pdf')
     close(hf);
@@ -1294,6 +1295,17 @@ if useww3
     % save figures
     savefig([c_output,'peakevents_timeseries'],hf1.Number,'pdf');
     savefig([c_output,'peakevents_timeseries_SR'],hf2.Number,'pdf');
+
+    %% plot trajectory over time in power-power space
+    hfPP = figure; ha = axes(hfPP);
+    for i = 1:Nbands
+        scatter(ha, bandpow(i,:),ww3pow(i,:),14,times,"filled");
+        colorbar();
+        xlabel('MERMAID'); ylabel('WW3');
+        title(['Power vs Power Trajectory in ',bands(i,:),'s band']);
+        ha.Box = true; bookfonts_TNR(16);
+        savefig([c_output,'powertrajectories_band',num2str(i)],hfPP.Number,'pdf');
+    end
 
     %% compare results (do peak times align?)
     % identify "high microseism days"
